@@ -1,0 +1,10 @@
+# Default: signed and notarized installer for distribution to other Macs.
+# Certificate names must match Keychain exactly. Never store passwords here.
+[distribution]
+application_identity = ""
+installer_identity = ""
+# Profile created using `xcrun notarytool store-credentials` (see README).
+notary_profile = ""
+
+# Explicit opt-in for local testing; Gatekeeper may reject this on other Macs.
+[development]
