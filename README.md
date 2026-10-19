@@ -95,7 +95,7 @@ QT_QPA_PLATFORM=offscreen .runtime/venv/bin/python -m unittest discover -s . -p 
 ## Source and downloads
 
 The source repository must remain **private**, with `main` for the release
-baseline and `dev` for ongoing changes. The separate download repository can
+baseline and `dev` for ongoing changes. The separate download repository
 is public and contains only user documentation on `dowload`; installers and
 checksums are GitHub Release assets. Version tags and Releases belong only in
 that download repository, never in this private source repository.

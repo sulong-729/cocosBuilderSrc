@@ -200,7 +200,7 @@ maintainer instructions; they do not mean a remote publication has occurred.
 
 1. Check the private source and public download repository visibility.
 2. Commit verified source to the private `main`/`dev` workflow.
-3. Update the independent `dowload` working copy with only current documentation,
+3. Update the independent `dowload` working copy with current user documentation
    and installation instructions. Keep the installer and checksum in Release
    assets, and describe signing status/support in the release body.
 4. Commit and push only `dowload` to the download repository.
