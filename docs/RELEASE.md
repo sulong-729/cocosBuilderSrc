@@ -151,95 +151,77 @@ an app ZIP as a notarized release.
 
 ## 6. Separate private source from public downloads
 
-GitHub does not provide public/private visibility per branch. Keep `main`/`dev`
-in the private source repository and initialize the public repository separately
-with the branch name **`dowload`** (this spelling is intentional).
+Keep `main` and `dev` in the private `cocosBuilderSrc` repository. The independent
+public `cocos-ios-builder-download` repository stores the installer and user
+instructions on **`dowload-v101`** for version 1.0.1.
 
-The public branch contains only:
+Do not create a GitHub Release or version tag in either repository for this
+download flow. GitHub automatically adds ZIP/TAR.GZ archives to tagged Releases;
+branch-based downloads avoid that confusing Assets list.
+
+The current public branch contains only:
 
 ```text
+.gitattributes
+.gitignore
 README.md
 USER_GUIDE.md
-.gitignore
+cocos-builder-1.0.1-macOS-arm64-development.pkg
+cocos-builder-1.0.1-macOS-arm64-development.pkg.sha256
 ```
 
-The public tree must have no `.py`, `.c`, signing credentials, project settings,
-private source history, runtime directory, or previous installer. The app package
-still contains inspectable Python modules; private Git hosting does not make
-code inside a downloadable package secret.
+There must be no application `.py`/`.c` files, private history, credentials,
+project settings, runtime directories, or old installers in the public branch.
+The distributed Python app itself remains inspectable; private Git hosting is
+not a way to conceal code embedded inside a downloadable app.
 
-A PKG of this tool exceeds GitHub's 100 MiB normal-file limit, so upload the PKG
-as a **GitHub Release asset** rather than a normal Git blob. The branch stores
-the user guides and links to the release assets. Release assets are
-not part of the branch's Git history.
+## 7. Publish a versioned download branch
 
-## 7. Publish only the newest build
+The PKG exceeds GitHub's normal 100 MiB Git-file limit. Install Git LFS on the
+maintainer's machine, then configure it locally in the download working copy:
 
-### Keep source out of release archives
+```sh
+git -C .publishing/download lfs install --local
+git -C .publishing/download lfs track '*.pkg'
+```
 
-Publish version tags and Releases only in the public download repository. Do
-not create version tags or Releases in the private source repository: GitHub
-would automatically generate source archives from those commits.
+For version 1.0.1 the download branch is `dowload-v101`. For a future version,
+create a new version-named branch from the current download branch, replace the
+previous PKG/checksum with the verified new pair, and update README/User Guide
+version names, download links, support information, and signing status. Stage
+only the installer/checksum, `.gitattributes`, ignore rules, and user guides.
+The private source repository must continue ignoring `.publishing/` and `build/`.
 
-The old source-repository release workflow has been removed. The private source
-repository keeps its `main` and `dev` branches and source history; the independent
-public `dowload` branch contains only user documentation. The public release's
-Assets contain only the installer and its checksum, with usage instructions in
-the release body and linked User Guide.
+Before pushing, check that the staged PKG is an LFS pointer with the expected
+SHA-256 and full package size, not a 143 MB normal Git blob:
 
-GitHub always displays automatic ZIP/TAR.GZ source archive links for tagged
-Releases. In the public download repository those archives contain only the
-README, User Guide, and ignore rules. They contain no application source files
-or private repository history and are not installation packages.
+```sh
+git -C .publishing/download lfs ls-files
+git -C .publishing/download diff --cached --check
+git -C .publishing/download diff --cached --stat
+```
 
-### Public download-repository publication
+Commit and push the named version branch using the already configured SSH
+remote. The Git LFS pre-push hook uploads the real installer data before the
+branch ref is published. A Git push without a successful LFS upload does not
+establish a usable download.
 
-The commands below require an authenticated GitHub CLI (`gh`) with write access.
-Replace example owner/repository/version names with verified values. These are
-maintainer instructions; they do not mean a remote publication has occurred.
+Validate the public branch and download the actual installer anonymously through
+the README link. Verify the downloaded file's SHA-256 against its matching
+checksum. Only after this succeeds, remove superseded Release/tag downloads and
+obsolete local installer copies. Set the latest version branch as the public
+repository's default branch so the repository URL shows the current guide.
 
-1. Check the private source and public download repository visibility.
-2. Commit verified source to the private `main`/`dev` workflow.
-3. Update the independent `dowload` working copy with current user documentation
-   and installation instructions. Keep the installer and checksum in Release
-   assets, and describe signing status/support in the release body.
-4. Commit and push only `dowload` to the download repository.
-5. Create the new release with its installer and matching checksum:
+Use `media.githubusercontent.com/media/OWNER/REPO/BRANCH/FILENAME.pkg` for the
+LFS package download, or open the file on GitHub and choose **Download raw file**.
+The checksum can use its normal `raw.githubusercontent.com` URL. Do not recommend
+the repository ZIP as an installer: without including LFS objects it can contain
+only a small pointer file rather than the actual PKG. Browser users do not need
+to install Git LFS when using the verified direct package link.
 
-   ```sh
-   gh release create v1.0.1 \
-     build/cocos-builder-1.0.1-macOS-arm64-development.pkg \
-     build/cocos-builder-1.0.1-macOS-arm64-development.pkg.sha256 \
-     --repo OWNER/cocos-ios-builder-download \
-     --target dowload \
-     --title "Cocos iOS Builder 1.0.1 — Development Preview" \
-     --notes-file RELEASE-1.0.1.md \
-     --prerelease
-   ```
-
-   For a notarized distribution, use its actual filename and accurate signing
-   notes. Remove `--prerelease` only when the release has the intended validation.
-6. Verify the published page, asset size, and metadata. Download the asset again
-   and verify its SHA-256 against the matching checksum.
-7. List releases and explicitly identify older build releases in this download
-   repository. Delete those releases/assets and their old release tags after
-   confirming the newest download is valid. Example for a known obsolete tag:
-
-   ```sh
-   gh release delete OLD_RELEASE_TAG --cleanup-tag --yes --repo OWNER/cocos-ios-builder-download
-   ```
-
-   Use the exact obsolete tag; never apply this to the newest release or the
-   private source repository. If releases are immutable and deletion is blocked,
-   report that limitation rather than claiming old assets were removed.
-8. Delete obsolete local generated `.pkg` files and `*-previous*.app` backups,
-   retaining only the newest package/checksum and current built app. Exclude
-   `.runtime/` and source files from this cleanup.
-
-A fresh download repository starts without old installers or source history.
-For future updates, deleting a tracked file in a new commit does not remove it
-from older commits. Keeping binaries exclusively in Release assets makes the
-latest-only asset policy manageable without rewriting source history.
+Git LFS storage and bandwidth are governed by the repository owner's GitHub
+plan. Keep only the current installer in the active download tree; removing an
+old file from a later commit does not automatically purge older Git/LFS objects.
 
 ## References
 

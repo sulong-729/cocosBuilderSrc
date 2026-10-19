@@ -7,7 +7,7 @@ Use two separate Git repositories:
 | Repository | Visibility | Branches | Contents |
 | --- | --- | --- | --- |
 | `cocosBuilderSrc` | Private | `main`, `dev` | Application source, tests, assets, packaging configuration, and maintainer documentation |
-| `cocos-ios-builder-download` | Public | `dowload` | README and User Guide; installer and checksum in GitHub Releases |
+| `cocos-ios-builder-download` | Public | `dowload-v101` | Installer through Git LFS, checksum, README, and User Guide |
 
 These are the intended repository names; remote URLs must be verified before
 pushing. Never make the source repository public to expose only a download branch:

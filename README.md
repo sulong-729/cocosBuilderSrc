@@ -31,12 +31,12 @@ The app interface is currently primarily Vietnamese; the documentation is Englis
 ## Download and install
 
 The public download repository is separate from this private source repository.
-Its branch is intentionally named **`dowload`**. Use its latest published
-GitHub Release to download the `.pkg` and checksum; do not use GitHub's automatic
-“Source code” ZIP as an installer.
+Version 1.0.1 is distributed directly from the **`dowload-v101`** branch using
+Git LFS, without a Release or version tag.
 
-- [Download version 1.0.1](https://github.com/sulong-729/cocos-ios-builder-download/releases/tag/v1.0.1)
-- [Public English User Guide](https://github.com/sulong-729/cocos-ios-builder-download/blob/dowload/USER_GUIDE.md)
+- [Download page and installation instructions](https://github.com/sulong-729/cocos-ios-builder-download/tree/dowload-v101)
+- [Download the PKG](https://media.githubusercontent.com/media/sulong-729/cocos-ios-builder-download/dowload-v101/cocos-builder-1.0.1-macOS-arm64-development.pkg)
+- [Public English User Guide](https://github.com/sulong-729/cocos-ios-builder-download/blob/dowload-v101/USER_GUIDE.md)
 
 1. Confirm that your Mac has Apple Silicon and macOS 14.4 or newer.
 2. Download the newest `.pkg` and its `.sha256` file together.
@@ -94,11 +94,10 @@ QT_QPA_PLATFORM=offscreen .runtime/venv/bin/python -m unittest discover -s . -p 
 
 ## Source and downloads
 
-The source repository must remain **private**, with `main` for the release
-baseline and `dev` for ongoing changes. The separate download repository
-is public and contains only user documentation on `dowload`; installers and
-checksums are GitHub Release assets. Version tags and Releases belong only in
-that download repository, never in this private source repository.
+The source repository remains **private**, with `main` for the release baseline
+and `dev` for ongoing changes. The separate public download repository contains
+the latest installer, checksum, Git LFS configuration, and user documentation on
+`dowload-v101`. Do not publish Releases or version tags for these downloads.
 
 Repository visibility applies to the whole repository, not individual branches.
 A separate download repository prevents source history from being pushed with
