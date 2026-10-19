@@ -6,8 +6,8 @@ Use two separate Git repositories:
 
 | Repository | Visibility | Branches | Contents |
 | --- | --- | --- | --- |
-| `cocos-ios-builder` | Private | `main`, `dev` | Application source, tests, assets, packaging configuration, and maintainer documentation |
-| `cocos-ios-builder-download` | Public | `dowload` | User guide, current release notes, checksum, and current release metadata; installer in GitHub Releases |
+| `cocosBuilderSrc` | Private | `main`, `dev` | Application source, tests, assets, packaging configuration, and maintainer documentation |
+| `cocos-ios-builder-download` | Public | `dowload` | README and User Guide; installer and checksum in GitHub Releases |
 
 These are the intended repository names; remote URLs must be verified before
 pushing. Never make the source repository public to expose only a download branch:
@@ -115,13 +115,13 @@ request process. Never push source commits to the public download repository.
 Before the first remote push, confirm that the source destination is private:
 
 ```sh
-gh repo view OWNER/cocos-ios-builder --json nameWithOwner,visibility,url
+gh repo view OWNER/cocosBuilderSrc --json nameWithOwner,visibility,url
 ```
 
 Only after that output reports `PRIVATE`, configure/push the source remote:
 
 ```sh
-git remote add origin git@github.com:OWNER/cocos-ios-builder.git
+git remote add origin git@github.com:OWNER/cocosBuilderSrc.git
 git push -u origin main dev
 ```
 

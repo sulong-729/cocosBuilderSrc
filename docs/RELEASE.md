@@ -160,9 +160,6 @@ The public branch contains only:
 ```text
 README.md
 USER_GUIDE.md
-RELEASE_NOTES.md
-release.json
-<current-installer>.sha256
 .gitignore
 ```
 
@@ -173,35 +170,27 @@ code inside a downloadable package secret.
 
 A PKG of this tool exceeds GitHub's 100 MiB normal-file limit, so upload the PKG
 as a **GitHub Release asset** rather than a normal Git blob. The branch stores
-the guide/metadata/checksum and links to the release asset. Release assets are
+the user guides and links to the release assets. Release assets are
 not part of the branch's Git history.
 
 ## 7. Publish only the newest build
 
-### Tag-triggered publication in the private source repository
+### Keep source out of release archives
 
-The source repository also includes `.github/workflows/release.yml`. Pushing a
-version tag matching `release_info.VERSION` runs it on an Apple Silicon macOS
-runner. It bootstraps Python/Qt, runs the tests, builds a development installer,
-checks its signature/checksum, and creates a draft prerelease. It uploads the
-installer, checksum, metadata, and user guide, downloads the installer again,
-verifies its checksum, and only then publishes the prerelease.
+Publish version tags and Releases only in the public download repository. Do
+not create version tags or Releases in the private source repository: GitHub
+would automatically generate source archives from those commits.
 
-```sh
-git tag -a v1.0.1 -m "Cocos iOS Builder 1.0.1 development preview"
-git push origin v1.0.1
-```
+The old source-repository release workflow has been removed. The private source
+repository keeps its `main` and `dev` branches and source history; the independent
+public `dowload` branch contains only user documentation. The public release's
+Assets contain only the installer and its checksum, with usage instructions in
+the release body and linked User Guide.
 
-This workflow uses the repository-scoped `GITHUB_TOKEN` provided by GitHub
-Actions, so no browser login or personal access token is needed on the local
-machine. GitHub Actions must be enabled and have available runner capacity and
-account minutes. A published prerelease in the private source repository remains
-private; it is separate from public download-repository publication below.
-
-The workflow rebuilds from the tagged source. Its package checksum can differ
-from a locally generated package; use the checksum attached to that release.
-It does not notarize the package, and it refuses to overwrite a published
-release. A failed run can leave an unpublished draft for investigation.
+GitHub always displays automatic ZIP/TAR.GZ source archive links for tagged
+Releases. In the public download repository those archives contain only the
+README, User Guide, and ignore rules. They contain no application source files
+or private repository history and are not installation packages.
 
 ### Public download-repository publication
 
@@ -212,8 +201,8 @@ maintainer instructions; they do not mean a remote publication has occurred.
 1. Check the private source and public download repository visibility.
 2. Commit verified source to the private `main`/`dev` workflow.
 3. Update the independent `dowload` working copy with only current documentation,
-   metadata, and checksum. Record version, profile, signing state, platform,
-   package size, checksum, and source commit in its release metadata.
+   and installation instructions. Keep the installer and checksum in Release
+   assets, and describe signing status/support in the release body.
 4. Commit and push only `dowload` to the download repository.
 5. Create the new release with its installer and matching checksum:
 

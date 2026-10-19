@@ -35,6 +35,9 @@ Its branch is intentionally named **`dowload`**. Use its latest published
 GitHub Release to download the `.pkg` and checksum; do not use GitHub's automatic
 “Source code” ZIP as an installer.
 
+- [Download version 1.0.1](https://github.com/sulong-729/cocos-ios-builder-download/releases/tag/v1.0.1)
+- [Public English User Guide](https://github.com/sulong-729/cocos-ios-builder-download/blob/dowload/USER_GUIDE.md)
+
 1. Confirm that your Mac has Apple Silicon and macOS 14.4 or newer.
 2. Download the newest `.pkg` and its `.sha256` file together.
 3. Verify the checksum as described in the [User Guide](docs/USER_GUIDE.md).
@@ -93,8 +96,9 @@ QT_QPA_PLATFORM=offscreen .runtime/venv/bin/python -m unittest discover -s . -p 
 
 The source repository must remain **private**, with `main` for the release
 baseline and `dev` for ongoing changes. The separate download repository can
-be public and contains only user documentation, release metadata, and checksums
-on `dowload`; installers are GitHub Release assets.
+is public and contains only user documentation on `dowload`; installers and
+checksums are GitHub Release assets. Version tags and Releases belong only in
+that download repository, never in this private source repository.
 
 Repository visibility applies to the whole repository, not individual branches.
 A separate download repository prevents source history from being pushed with
