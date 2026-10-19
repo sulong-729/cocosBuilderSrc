@@ -178,6 +178,33 @@ not part of the branch's Git history.
 
 ## 7. Publish only the newest build
 
+### Tag-triggered publication in the private source repository
+
+The source repository also includes `.github/workflows/release.yml`. Pushing a
+version tag matching `release_info.VERSION` runs it on an Apple Silicon macOS
+runner. It bootstraps Python/Qt, runs the tests, builds a development installer,
+checks its signature/checksum, and creates a draft prerelease. It uploads the
+installer, checksum, metadata, and user guide, downloads the installer again,
+verifies its checksum, and only then publishes the prerelease.
+
+```sh
+git tag -a v1.0.1 -m "Cocos iOS Builder 1.0.1 development preview"
+git push origin v1.0.1
+```
+
+This workflow uses the repository-scoped `GITHUB_TOKEN` provided by GitHub
+Actions, so no browser login or personal access token is needed on the local
+machine. GitHub Actions must be enabled and have available runner capacity and
+account minutes. A published prerelease in the private source repository remains
+private; it is separate from public download-repository publication below.
+
+The workflow rebuilds from the tagged source. Its package checksum can differ
+from a locally generated package; use the checksum attached to that release.
+It does not notarize the package, and it refuses to overwrite a published
+release. A failed run can leave an unpublished draft for investigation.
+
+### Public download-repository publication
+
 The commands below require an authenticated GitHub CLI (`gh`) with write access.
 Replace example owner/repository/version names with verified values. These are
 maintainer instructions; they do not mean a remote publication has occurred.

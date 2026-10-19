@@ -1,0 +1,80 @@
+name: Build and publish macOS preview
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONDONTWRITEBYTECODE: '1'
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up bootstrap Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+
+      - name: Validate tag and runner
+        run: |
+          test "$(uname -m)" = arm64
+          python -c 'import os; from release_info import VERSION; assert os.environ["RELEASE_TAG"] == "v" + VERSION, "Tag must match release_info.VERSION"'
+          test -f "RELEASE-${RELEASE_TAG#v}.md"
+
+      - name: Prepare bundled Python and Qt
+        run: python setup_tool.py
+
+      - name: Run automated tests
+        run: .runtime/venv/bin/python -m unittest discover -s . -p 'test_*.py' -v
+
+      - name: Build development preview installer
+        run: .runtime/venv/bin/python build_release.py --profile development
+
+      - name: Verify installer and prepare metadata
+        run: |
+          /usr/bin/codesign --verify --deep --strict "dist/cocos builder.app"
+          (cd build && shasum -a 256 -c ./*.pkg.sha256)
+          .runtime/venv/bin/python -c 'import json, os; from pathlib import Path; p=Path("dist/release.json"); d=json.loads(p.read_text()); assert d["profile"] == "development"; d.update(sourceCommit=os.environ["GITHUB_SHA"], tag=os.environ["RELEASE_TAG"], notarized=False, packageBytes=(Path("build")/d["installer"]).stat().st_size); Path("build/release.json").write_text(json.dumps(d, indent=2)+"\n")'
+          cp docs/USER_GUIDE.md build/USER_GUIDE.md
+
+      - name: Upload and verify release assets before publishing
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft > "$RUNNER_TEMP/release-draft-state"; then
+            test "$(cat "$RUNNER_TEMP/release-draft-state")" = true || {
+              echo "Release already published; refusing to replace published assets."
+              exit 1
+            }
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease \
+              --title "Cocos iOS Builder ${RELEASE_TAG#v} — Development Preview" \
+              --notes-file "RELEASE-${RELEASE_TAG#v}.md"
+          fi
+          gh release upload "$RELEASE_TAG" build/*.pkg build/*.pkg.sha256 \
+            build/release.json build/USER_GUIDE.md --clobber
+          verify_dir="$RUNNER_TEMP/cocos-release-verify"
+          mkdir -p "$verify_dir"
+          gh release download "$RELEASE_TAG" --pattern '*.pkg' --pattern '*.pkg.sha256' \
+            --dir "$verify_dir" --clobber
+          (cd "$verify_dir" && shasum -a 256 -c ./*.pkg.sha256)
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease \
+            --title "Cocos iOS Builder ${RELEASE_TAG#v} — Development Preview" \
+            --notes-file "RELEASE-${RELEASE_TAG#v}.md"
+          gh release view "$RELEASE_TAG" --json url,assets,isDraft,isPrerelease
