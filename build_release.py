@@ -132,7 +132,7 @@ def build(config_path=SOURCE / 'release-build.toml', profile='distribution', che
         env.update(PYTHONHOME=str(resources / "python"), PYTHONPATH=str(resources / "site-packages"),
                    PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1", QT_QPA_PLATFORM="offscreen")
         subprocess.run([str(resources / "python/bin/python3.15"), "-c",
-                        "import sys; from PySide6.QtWidgets import QApplication; "
+                        "import sys, qrcode; from PySide6.QtWidgets import QApplication; "
                         "a=QApplication([]); print('Embedded Python/Qt:', sys.version.split()[0])"],
                        env=env, check=True)
         print(f'Signing app ({profile})…', flush=True)
@@ -154,11 +154,11 @@ def build(config_path=SOURCE / 'release-build.toml', profile='distribution', che
             "--ownership", "recommended", component)
         welcome = work / "welcome.html"
         welcome.write_text(f'''<html><body style="font-family:-apple-system;padding:18px">
-<h1>{APP_NAME} {VERSION}</h1><p>Build and run Cocos iOS apps from one desktop tool.</p>
+<h1>{APP_NAME} {VERSION}</h1><p>Build and run Cocos iOS and Android apps from one desktop tool.</p>
 <p>Installs into <b>/Applications/{APP_NAME}.app</b>.</p>
 <p>macOS Installer will request administrator authorization when required.</p>
 <p>Apple Silicon Mac · macOS {MIN_MACOS} or newer.<br>Python and Qt are included.</p>
-<p>Install Xcode, your project's Cocos Creator version, and the required iOS Simulator runtime separately.</p>
+<p>Install your project's Cocos Creator version separately. iOS needs Xcode and a compatible runtime; Android needs Studio, SDK, NDK and JDK.</p>
 </body></html>''')
         distribution = work / "distribution.xml"
         distribution.write_text(distribution_xml())

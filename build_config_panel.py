@@ -9,20 +9,22 @@ class BuildConfigPanel(QWidget):
     changed=Signal()
     reset_requested=Signal()
 
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,platform='ios'):
         super().__init__(parent)
+        self.platform=platform
+        title='Cocos Android Build Config' if platform=='android' else 'Cocos iOS Build Config'
         self.original={};self.fields={};self.loading=False
         layout=QVBoxLayout(self)
-        self.toggle=QPushButton('Cocos iOS Build Config ▸')
+        self.toggle=QPushButton(title+' ▸')
         self.toggle.setCheckable(True)
-        self.toggle.setToolTip('Bấm để mở hoặc thu gọn cấu hình build iOS')
+        self.toggle.setToolTip('Bấm để mở hoặc thu gọn cấu hình build')
         layout.addWidget(self.toggle)
         group=QGroupBox()
         self.body=group
         layout.addWidget(group)
         group.setVisible(False)
         self.toggle.toggled.connect(group.setVisible)
-        self.toggle.toggled.connect(lambda opened: self.toggle.setText('Cocos iOS Build Config ▾' if opened else 'Cocos iOS Build Config ▸'))
+        self.toggle.toggled.connect(lambda opened: self.toggle.setText(title+(' ▾' if opened else ' ▸')))
         form=QFormLayout(group)
         def check(label,key):
             field=QCheckBox(label);field.toggled.connect(self.edited)
@@ -40,13 +42,25 @@ class BuildConfigPanel(QWidget):
         for value in ['merge_dep','merge_all_json','none']: self.compression.addItem(value,value)
         self.compression.currentIndexChanged.connect(self.edited)
         form.addRow('Main bundle compression',self.compression)
-        text('iOS tối thiểu','packages.ios.targetVersion')
-        check('Auto Rotate (tự xoay theo các hướng đã chọn)','builderAutoRotate')
-        self.fields['builderAutoRotate'].setChecked(True)
-        self.fields['builderAutoRotate'].setToolTip('Áp dụng override trong native/engine/ios/ViewController.mm được sinh ra; không sửa native-templates. Tắt để dùng logic xoay gốc của game.')
+        if platform=='ios':
+            text('iOS tối thiểu','packages.ios.targetVersion')
+            check('Auto Rotate (tự xoay theo các hướng đã chọn)','builderAutoRotate')
+            self.fields['builderAutoRotate'].setChecked(True)
+            self.fields['builderAutoRotate'].setToolTip('Áp dụng override trong native/engine/ios/ViewController.mm được sinh ra; không sửa native-templates. Tắt để dùng logic xoay gốc của game.')
+        else:
+            text('Package ID','packages.android.packageName')
+            text('Android API (target)','packages.android.apiLevel')
+            text('Minimum SDK (tùy chọn)','builderAndroid.minSdk')
+            text('Compile SDK (tùy chọn)','builderAndroid.compileSdk')
+            text('Version Code (tùy chọn)','builderAndroid.versionCode')
+            text('Version Name (tùy chọn)','builderAndroid.versionName')
+            self.abis={}
+            for abi in ('arm64-v8a','armeabi-v7a','x86_64','x86'):
+                field=QCheckBox(abi);field.toggled.connect(self.edited)
+                self.abis[abi]=field;form.addRow('ABI' if len(self.abis)==1 else '',field)
         for label,key in [('Portrait','portrait'),('Portrait Upside Down','upsideDown'),('Landscape Left','landscapeLeft'),('Landscape Right','landscapeRight')]:
-            check(label,'packages.ios.orientation.'+key)
-        check('Metal','packages.ios.renderBackEnd.metal')
+            check(label,'packages.'+platform+'.orientation.'+key)
+        if platform=='ios': check('Metal','packages.ios.renderBackEnd.metal')
         check('Mã hóa script','packages.native.encrypted')
         text('Khóa XXTEA','packages.native.xxteaKey',True)
         check('Nén ZIP native','packages.native.compressZip')
@@ -60,7 +74,7 @@ class BuildConfigPanel(QWidget):
         self.start.setMinimumWidth(140)
         self.start.currentTextChanged.connect(self.start.setToolTip)
         form.addRow('Scene khởi động',self.start)
-        note=QLabel('Bundle ID và Apple Team ID dùng các ô phía trên. Simulator / iPhone theo thiết bị đã chọn.\nThay đổi cấu hình sẽ tự xuất lại Cocos; chế độ chỉ build native bị bỏ qua cho lượt đó.')
+        note=QLabel('Bundle ID và Apple Team ID dùng các ô phía trên. Simulator / iPhone theo thiết bị đã chọn.\nThay đổi cấu hình sẽ tự xuất lại Cocos; chế độ chỉ build native bị bỏ qua cho lượt đó.' if platform=='ios' else 'Chỉ xuất APK. arm64-v8a dùng cho điện thoại và máy ảo ARM; x86_64 dùng cho máy ảo Intel. SDK/NDK/JDK chọn ở phần Công cụ. Khóa XXTEA nhập lại khi cần, không lưu vào settings tool.')
         note.setWordWrap(True);form.addRow(note)
         reset=QPushButton('Khôi phục cấu hình Cocos');reset.clicked.connect(self.reset_requested)
         form.addRow(reset)
@@ -71,10 +85,14 @@ class BuildConfigPanel(QWidget):
     def load(self,options,scene_catalog=None):
         self.loading=True;self.original=copy.deepcopy(options)
         self.debug.setCurrentIndex(0 if options.get('debug',True) else 1)
+        if self.platform=='android':
+            selected=options.get('packages',{}).get('android',{}).get('appABIs',['arm64-v8a'])
+            for abi,field in self.abis.items():field.setChecked(abi in selected)
         for key,field in self.fields.items():
             value=options
             for part in key.split('.'): value=value.get(part,{}) if isinstance(value,dict) else {}
             if key == 'builderAutoRotate': value=options.get(key,True)
+            if self.platform=='android' and key=='packages.android.apiLevel' and isinstance(value,dict): value=27
             if isinstance(field,QCheckBox): field.setChecked(value is True)
             else: field.setText('' if isinstance(value,dict) else str(value))
         value=options.get('mainBundleCompressionType','merge_dep')
@@ -115,4 +133,10 @@ class BuildConfigPanel(QWidget):
             for part in parts[:-1]:target=target.setdefault(part,{})
             target[parts[-1]]=value
         result['scenes']=self.selected_scenes();result['startScene']=self.start.currentData() or ''
+        if self.platform=='android':
+            android=result.setdefault('packages',{}).setdefault('android',{})
+            android['appABIs']=[abi for abi,field in self.abis.items() if field.isChecked()]
+            if str(android.get('apiLevel','')).isdigit():android['apiLevel']=int(android['apiLevel'])
+            android['appBundle']=False
+            result['platform']='android'
         return result

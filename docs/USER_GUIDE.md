@@ -1,6 +1,6 @@
 # Cocos iOS Builder — User Guide
 
-This guide covers version **1.0.1**. The UI is primarily Vietnamese; the
+This guide covers version **1.0.2**. The UI is primarily Vietnamese; the
 instructions below pair the visible labels with English explanations.
 
 ## 1. What the tool does
@@ -55,7 +55,7 @@ assuming any particular iOS version is available.
 ### Outside the supported scope
 
 - Mac Intel installers and universal Mac installers.
-- Windows or Linux hosts, Cocos Creator 2.x, and Android targets.
+- Windows or Linux hosts, Cocos Creator 2.x, and Android App Bundle (AAB) output.
 - App Store Connect/TestFlight publishing, IPA export, and automatic certificate setup.
 - Automatic Xcode, Cocos Creator, iOS runtime, or Rosetta installation.
 - Independent live iPhone stdout/stderr streaming.
@@ -64,7 +64,7 @@ assuming any particular iOS version is available.
 
 ## 3. Download and verify the installer
 
-Use the `dowload-v101` branch in the public download repository. Download the
+Use the `dowload-v102` branch in the public download repository. Download the
 `.pkg` using the README direct link or **Download raw file**, and download its
 matching `.sha256` file. The PKG is stored with Git LFS; do not use an LFS
 pointer file or a repository ZIP archive as the installer.
@@ -72,14 +72,14 @@ pointer file or a repository ZIP archive as the installer.
 For the currently prepared development build, the files are:
 
 ```text
-cocos-builder-1.0.1-macOS-arm64-development.pkg
-cocos-builder-1.0.1-macOS-arm64-development.pkg.sha256
+cocos-builder-1.0.2-macOS-arm64-development.pkg
+cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256
 ```
 
 In Terminal, change to the folder containing both files and run:
 
 ```sh
-shasum -a 256 -c cocos-builder-1.0.1-macOS-arm64-development.pkg.sha256
+shasum -a 256 -c cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256
 ```
 
 Expected result: the installer filename followed by `OK`. A checksum mismatch
@@ -88,7 +88,7 @@ matching files again. Checksums check file integrity, not Apple notarization.
 
 ### Signing status of this build
 
-The prepared 1.0.1 development build uses an ad-hoc app signature. The installer
+The prepared 1.0.2 development build uses an ad-hoc app signature. The installer
 is unsigned and has not been notarized by Apple. Gatekeeper may refuse it or
 suggest moving the app to Trash after an Internet download. The tool cannot
 approve its own security status.
@@ -389,3 +389,42 @@ When reporting a problem, include the tool version, Mac CPU/macOS, Xcode and
 Creator versions, destination/runtime, action used, relevant build-log section,
 and `.ips` report if applicable. Remove credentials, encryption keys, and private
 project content before sharing logs publicly.
+
+
+## Android APK workflow (1.0.2)
+
+The Android tab is independent of iOS tasks and signing. Install the matching
+Cocos Creator plus Android Studio, SDK Platform/Build Tools, Platform Tools,
+NDK, and a compatible JDK. Emulator management additionally needs Android
+Emulator, Command-line Tools and an installed system image. Missing components
+produce a setup banner, log entry and installation guidance.
+
+1. Select a project, open Android, and select its saved Android build task.
+2. Expand Android tools and select the local Studio, SDK, NDK and Java paths.
+   The tool selects an installed compatible JDK for Gradle; SDK utilities use
+   their own compatible Java environment. No JDK is silently downloaded.
+3. Check package ID, scenes, ABI, Debug/Release and SDK overrides in Cocos Android
+   Build Config. These settings are separate from iOS.
+4. Choose emulator or physical-phone mode. The single target dropdown controls
+   the exact selected device. Refresh prefers an already running emulator;
+   green row indicators identify running machines. The power icon is green to
+   boot a stopped AVD and red to shut down a running AVD. Deletion asks first.
+5. For a phone, enable USB debugging and authorize the Mac, or pair over Wi-Fi
+   by QR / pairing code. QR credentials are not persisted. Emulator buttons are
+   replaced with phone connection controls in physical-phone mode.
+6. Build APK, Build & Run, or run an existing validated APK. Clean & Run asks
+   before removing the selected app and its data. Build & Run stays clickable
+   and explains missing prerequisites instead of silently disabling itself.
+
+Picking a running device automatically streams its full Logcat into the main
+Android log panel, including other apps. Switching devices switches the stream.
+Logging continues during builds; no separate Logcat button is needed. Normal
+logs are white, warnings yellow, errors red, and SDK/NDK parameters green.
+SDK/NDK ranges describe locally installed versions, not an invented supported
+range. Platform tabs show work spinners and counts of running/connected devices.
+Refresh briefly highlights every four seconds while no emulator is selected.
+
+APK export/build/install/launch was exercised with Cocos 3.7.3 on an ARM64
+emulator. Physical-phone QR pairing is covered by automated protocol tests but
+has not been verified with a physical phone. Gameplay authentication/stability
+and AVD creation/deletion remain outside the completed native verification.

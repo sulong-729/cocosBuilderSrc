@@ -23,7 +23,8 @@ def setup():
         ready = subprocess.run([str(interpreter), "-c",
             "import sys; from PySide6 import QtWidgets; assert sys.version_info[:2] == (3, 15)"],
             capture_output=True).returncode == 0
-    if not ready:
+    packages_ready = ready and subprocess.run([str(interpreter), "-c", "import qrcode"], capture_output=True).returncode == 0
+    if not ready or not packages_ready:
         bootstrap = OUTPUT / "bootstrap"
         uv = bootstrap / "bin/uv"
         if not uv.exists():
@@ -31,15 +32,16 @@ def setup():
         env = os.environ.copy()
         env["UV_PYTHON_INSTALL_DIR"] = str(PYTHON_HOME)
         env["UV_CACHE_DIR"] = str(OUTPUT / "cache")
-        subprocess.run([str(uv), "python", "install", "3.15", "--no-bin"], env=env, check=True)
-        subprocess.run([str(uv), "venv", "--python", "3.15", str(VENV)], env=env, check=True)
+        if not ready:
+            subprocess.run([str(uv), "python", "install", "3.15", "--no-bin"], env=env, check=True)
+            subprocess.run([str(uv), "venv", "--python", "3.15", str(VENV)], env=env, check=True)
         subprocess.run([str(uv), "pip", "install", "--python", str(interpreter),
                         "-r", str(SOURCE / "requirements.txt")], env=env, check=True)
     contents = APP / "Contents"
     resources, executables = contents / "Resources", contents / "MacOS"
     resources.mkdir(parents=True, exist_ok=True)
     executables.mkdir(exist_ok=True)
-    for filename in ("app.py", "backend.py", "diagnostics.py", "crash_panel.py", "project_config.py", "autorotate.py", "build_config_panel.py", "release_info.py", "app-icon.png", "app-icon.icns", "arrow.svg", "icon-refresh.svg", "icon-reload.svg", "icon-create.svg", "icon-delete.svg", "icon-open.svg", "icon-power.svg"):
+    for filename in ("app.py", "backend.py", "android_backend.py", "android_panel.py", "android_wifi.py", "platform_status.py", "device_combo.py", "log_style.py", "diagnostics.py", "crash_panel.py", "project_config.py", "autorotate.py", "build_config_panel.py", "release_info.py", "app-icon.png", "app-icon.icns", "arrow.svg", "icon-refresh.svg", "icon-reload.svg", "icon-create.svg", "icon-delete.svg", "icon-open.svg", "icon-power.svg"):
         shutil.copy2(SOURCE / filename, resources / filename)
     launcher = executables / "CocosBuilder"
     launcher.write_text('#!/bin/bash\nset -e\n' +

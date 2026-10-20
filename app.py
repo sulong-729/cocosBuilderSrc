@@ -9,7 +9,7 @@ import threading
 from collections import deque
 
 from PySide6.QtCore import QObject, Signal, QUrl, Qt, QTimer, QSize
-from PySide6.QtGui import QDesktopServices, QFont, QTextCursor, QColor, QPainter, QIcon
+from PySide6.QtGui import QDesktopServices, QFont, QTextCursor, QColor, QPainter, QIcon, QSyntaxHighlighter, QTextCharFormat
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                               QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
                               QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar,
@@ -30,73 +30,11 @@ class Events(QObject):
     running = Signal(object)
     dependencies = Signal(object)
     simulator_action = Signal(object)
+    platform_counts = Signal(object)
 
 
-BOOTED_ROLE = int(Qt.ItemDataRole.UserRole) + 1
-
-
-def paint_running_dot(painter, rect, metrics, text):
-    x = rect.left() + metrics.horizontalAdvance(text) + 9
-    if x + 5 <= rect.right():
-        painter.save()
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#42d883"))
-        painter.drawEllipse(x, rect.center().y() - 4, 8, 8)
-        painter.restore()
-
-
-class DeviceDelegate(QStyledItemDelegate):
-    def paint(self, painter, option, index):
-        super().paint(painter, option, index)
-        if index.data(BOOTED_ROLE):
-            opt = QStyleOptionViewItem(option)
-            self.initStyleOption(opt, index)
-            rect = opt.widget.style().subElementRect(QStyle.SubElement.SE_ItemViewItemText, opt, opt.widget)
-            paint_running_dot(painter, rect, opt.fontMetrics, opt.text)
-
-    def sizeHint(self, option, index):
-        size = super().sizeHint(option, index)
-        if index.data(BOOTED_ROLE):
-            size.setWidth(size.width() + 24)
-        return size
-
-
-class ReadableComboBox(QComboBox):
-    def __init__(self):
-        super().__init__()
-        self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
-        self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.setMinimumContentsLength(8)
-        self.view().setTextElideMode(Qt.TextElideMode.ElideNone)
-        self.view().setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.currentTextChanged.connect(self.setToolTip)
-        self.currentTextChanged.connect(lambda: self.updateGeometry())
-
-    def sizeHint(self):
-        width = self.fontMetrics().horizontalAdvance(self.currentText()) + (100 if self.currentData(BOOTED_ROLE) else 76)
-        return QSize(min(680, max(180, width)), super().sizeHint().height())
-
-    def minimumSizeHint(self):
-        return QSize(min(300, self.sizeHint().width()), self.sizeHint().height())
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        if self.currentData(BOOTED_ROLE):
-            option = QStyleOptionComboBox()
-            self.initStyleOption(option)
-            rect = self.style().subControlRect(QStyle.ComplexControl.CC_ComboBox, option,
-                                              QStyle.SubControl.SC_ComboBoxEditField, self)
-            painter = QPainter(self)
-            paint_running_dot(painter, rect, self.fontMetrics(), self.currentText())
-
-    def showPopup(self):
-        metrics = self.fontMetrics()
-        longest = max((metrics.horizontalAdvance(self.itemText(i)) for i in range(self.count())), default=0)
-        screen = self.screen() or QApplication.primaryScreen()
-        width = min(max(self.width(), longest + 96), screen.availableGeometry().width() - 50)
-        self.view().setMinimumWidth(width)
-        super().showPopup()
+from log_style import LogHighlighter
+from device_combo import BOOTED_ROLE, DeviceDelegate, ReadableComboBox, RefreshHint
 
 
 def icon_button(name, label):
@@ -172,7 +110,7 @@ class Window(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"{APP_NAME} {VERSION}")
         available = QApplication.primaryScreen().availableGeometry()
-        self.resize(min(960, int(available.width() * 0.88)), min(720, int(available.height() * 0.76)))
+        self.resize(int(available.width() * 0.9), int(available.height() * 0.9))
         self.move(available.center() - self.rect().center())
         self.info = None
         self.builder = None
@@ -232,7 +170,32 @@ class Window(QMainWindow):
         remove_project.clicked.connect(self.remove_project)
         sidebar_layout.addWidget(remove_project)
         shell_layout.addWidget(sidebar)
-        shell_layout.addWidget(scroll,1)
+        self.platform_tabs = QTabWidget()
+        self.platform_tabs.addTab(scroll, 'iOS')
+        from android_panel import AndroidPanel
+        self.android_panel = AndroidPanel(self)
+        android_scroll = QScrollArea()
+        android_scroll.setWidgetResizable(True)
+        android_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        android_scroll.setWidget(self.android_panel)
+        self.platform_tabs.addTab(android_scroll, 'Android')
+        self.platform_tabs.setCurrentIndex(1 if self.settings.get('platform') == 'android' else 0)
+        self.platform_tabs.currentChanged.connect(self.platform_changed)
+        from platform_status import PlatformStatus, platform_icon
+        from PySide6.QtWidgets import QTabBar
+        self.platform_badges = [PlatformStatus(self.platform_tabs), PlatformStatus(self.platform_tabs)]
+        for index, badge in enumerate(self.platform_badges):
+            self.platform_tabs.setTabIcon(index, platform_icon(index == 1))
+            side = QTabBar.ButtonPosition.LeftSide if index == 0 else QTabBar.ButtonPosition.RightSide
+            self.platform_tabs.tabBar().setTabButton(index, side, badge)
+        self.platform_device_counts = [None, None]
+        self.platform_count_scanning = False
+        self.platform_tick = 0
+        self.events.platform_counts.connect(self.platform_counts_updated)
+        self.platform_status_timer = QTimer(self)
+        self.platform_status_timer.timeout.connect(self.refresh_platform_status)
+        self.platform_status_timer.start(200)
+        shell_layout.addWidget(self.platform_tabs,1)
         self.setCentralWidget(shell)
         self.refresh_projects()
         layout = QVBoxLayout(central)
@@ -299,6 +262,9 @@ class Window(QMainWindow):
         self.device.setItemDelegate(DeviceDelegate(self.device))
         self.refresh = icon_button("refresh", "Làm mới danh sách thiết bị")
         self.refresh.clicked.connect(self.scan)
+        self.refresh_hint = RefreshHint(self.refresh, lambda: self.mode.currentData() == 'simulator' and not self.device.currentData() and not self.builder and not self.sim_busy)
+        self.device.currentIndexChanged.connect(self.refresh_hint.sync)
+        self.mode.currentIndexChanged.connect(self.refresh_hint.sync)
         row.addWidget(self.device)
         row.addWidget(self.refresh)
         self.create_sim = icon_button("create", "Tạo máy ảo")
@@ -444,6 +410,7 @@ class Window(QMainWindow):
         self.log.setReadOnly(True)
         self.log.document().setMaximumBlockCount(5000)
         self.log.setFont(QFont("Menlo", 11))
+        self.log_highlighter = LogHighlighter(self.log.document())
         log_layout.addWidget(self.log, 1)
         self.output_tabs = QTabWidget()
         self.output_tabs.addTab(log_page, "Log")
@@ -468,6 +435,12 @@ class Window(QMainWindow):
         self.setStyleSheet("""
           QMainWindow, QScrollArea, QWidget#content { background: #141c29; }
           QWidget { color: #e9eef7; font-size: 13px; }
+          QTabWidget::pane { border: 1px solid #35455c; background: #141c29; }
+          QTabBar::tab { background: #253041; color: #b8cee8; padding: 9px 26px; border: 1px solid #35455c; }
+          QTabBar::tab:selected { background: #1d2a3c; color: #8cdda4; border-bottom: 2px solid #8cdda4; }
+          QListWidget { background: #0e1623; border: 1px solid #35455c; border-radius: 6px; padding: 4px; }
+          QListWidget::item { padding: 7px; }
+          QListWidget::item:selected { background: #216cce; color: white; }
           QLabel#drop { border: 2px dashed #4b6683; border-radius: 12px; background: #1d2a3c; color: #b8cee8; }
           QGroupBox { border: 1px solid #35455c; border-radius: 9px; margin-top: 12px; padding: 17px 12px 10px; }
           QGroupBox::title { subcontrol-origin: margin; left: 12px; }
@@ -479,6 +452,7 @@ class Window(QMainWindow):
           QPushButton:hover { background: #38506e; }
           QPushButton:disabled { color: #7a8797; background: #253041; }
           QPushButton#primary { background: #216cce; border-color: #3683e8; font-weight: bold; }
+          QPushButton#primary:disabled { background: #253041; border-color: #35455c; color: #7a8797; }
           QProgressBar { border: none; background: #26374c; } QProgressBar::chunk { background: #3d94ff; }
         """)
         arrow = (Path(__file__).parent / "arrow.svg").as_posix()
@@ -500,9 +474,9 @@ class Window(QMainWindow):
             return False
         level = self.log_level.currentData()
         if level == "error":
-            return any(word in lowered for word in ("error", "exception", "failed", "sigabrt", "sigsegv", "exc_bad_access", "crash"))
+            return LogHighlighter.level(line) == "error"
         if level == "warning":
-            return "warn" in lowered
+            return LogHighlighter.level(line) == "warning"
         return True
 
     def refresh_log_view(self):
@@ -562,7 +536,7 @@ class Window(QMainWindow):
             self.load_project(self.project_path.text())
 
     def refresh_projects(self):
-        current = self.info["root"] if self.info else self.settings.get("lastProject")
+        current = self.settings.get('lastProject') or (self.info["root"] if self.info else None)
         self.project_list.clear()
         for root, saved in self.settings["projects"].items():
             item = QListWidgetItem(saved.get("displayName") or Path(root).name)
@@ -608,7 +582,7 @@ class Window(QMainWindow):
             self.refresh_projects()
 
     def remove_project(self):
-        if self.builder or self.sim_busy or self.checking_build:
+        if self.builder or self.sim_busy or self.checking_build or self.android_panel.busy:
             self.status.setText("Chờ tác vụ hoàn tất trước khi bỏ project khỏi danh sách.")
             return
         item = self.project_list.currentItem()
@@ -617,6 +591,12 @@ class Window(QMainWindow):
         if QMessageBox.question(self,"Bỏ project khỏi danh sách?",f"Bỏ {item.text()}? File dự án vẫn được giữ nguyên.") != QMessageBox.StandardButton.Yes:
             return
         self.settings["projects"].pop(root,None)
+        if self.android_panel.info and self.android_panel.info['root'] == root:
+            self.android_panel.info = None
+            self.android_panel.task_id = None
+            self.android_panel.config.clear()
+            self.android_panel.project_label.setText('Chọn project trong danh sách bên trái để bắt đầu.')
+            self.android_panel.update_actions()
         if self.settings.get("lastProject") == root:
             self.settings.pop("lastProject",None)
         if self.info and self.info["root"] == root:
@@ -641,6 +621,9 @@ class Window(QMainWindow):
             self.check_tools()
 
     def load_project(self, folder):
+        if self.android_panel.busy:
+            self.android_panel.set_status('Dừng tác vụ Android trước khi đổi project.')
+            return
         if self.sim_busy or self.checking_build or (self.builder and not self.builder.monitoring):
             self.status.setText("Đang build/thao tác thiết bị · Chờ hoàn tất để đổi project.")
             return
@@ -650,6 +633,7 @@ class Window(QMainWindow):
             return
         if self.info:
             self.save_current_project()
+        android_valid = self.android_panel.load_project(folder)
         try:
             info = inspect_project(folder)
         except Exception as error:
@@ -666,6 +650,10 @@ class Window(QMainWindow):
                 self.clean_run_button.setEnabled(False)
             self.build_only_button.setEnabled(False)
             self.update_run_availability()
+            if android_valid:
+                self.platform_tabs.setCurrentIndex(1)
+                self.android_panel.save()
+                self.refresh_projects()
             return
         self.info = info
         self.settings["projects"].setdefault(info["root"], {})
@@ -893,6 +881,8 @@ class Window(QMainWindow):
 
     def scan(self):
         kind = self.mode.currentData()
+        selected = self.device.currentData()
+        self.refresh_selected_simulator = selected.get("id") if selected else None
         self.refresh.setEnabled(False)
         self.device.clear()
         self.device.addItem("Đang tìm thiết bị…", None)
@@ -941,6 +931,13 @@ class Window(QMainWindow):
                 data = self.device.itemData(i)
                 if data and data["id"] == saved and i in compatible:
                     self.device.setCurrentIndex(i)
+
+        if result["kind"] == "simulator":
+            running = [i for i in range(self.device.count()) if self.device.itemData(i) and self.device.itemData(i).get("state") == "Booted"]
+            if running:
+                preferred = getattr(self, "refresh_selected_simulator", None)
+                choice = next((i for i in running if self.device.itemData(i)["id"] == preferred), running[0])
+                self.device.setCurrentIndex(choice)
 
         if self.preferred_simulator:
             for i in range(self.device.count()):
@@ -1172,6 +1169,9 @@ class Window(QMainWindow):
         self.update_simulator_buttons()
 
     def start_build(self, build_only=False):
+        if self.android_panel.busy:
+            self.status.setText('Dừng tác vụ Android trước khi build iOS.')
+            return
         if self.builder and self.builder.monitoring:
             self.begin_build(build_only=build_only)
             return
@@ -1191,6 +1191,9 @@ class Window(QMainWindow):
             self.begin_build(run_only=True, clean=True)
 
     def begin_build(self, run_only=False, build_only=False, clean=False):
+        if self.android_panel.busy:
+            self.status.setText('Dừng tác vụ Android trước khi chạy iOS.')
+            return
         if self.builder and self.builder.monitoring and not self.sim_busy:
             self.pending_launch = (run_only, build_only, clean)
             self.device.setEnabled(False)
@@ -1303,6 +1306,12 @@ class Window(QMainWindow):
             self.begin_build(run_only=run_only, build_only=build_only, clean=clean)
 
     def closeEvent(self, event):
+        if self.android_panel.busy:
+            if QMessageBox.question(self, 'Dừng tác vụ Android?', 'Dừng tác vụ Android trước khi đóng tool?') == QMessageBox.StandardButton.Yes:
+                self.android_panel.cancel()
+            event.ignore()
+            return
+        self.android_panel.save()
         self.save_current_project()
         if self.sim_busy:
             QMessageBox.information(self, "Đang thao tác máy ảo", "Đợi thao tác máy ảo hoàn tất rồi đóng tool.")
@@ -1310,6 +1319,7 @@ class Window(QMainWindow):
             return
         if self.builder and self.builder.monitoring:
             self.builder.cancel()
+            self.android_panel.stop_polling()
             event.accept()
             return
         if self.builder:
@@ -1318,7 +1328,46 @@ class Window(QMainWindow):
                 event.ignore()
                 return
             self.builder.cancel()
+        self.android_panel.stop_polling()
         event.accept()
+
+    def refresh_platform_status(self):
+        ios_busy = bool(self.builder and not self.builder.monitoring)
+        android_busy = bool(self.android_panel.busy and not self.android_panel.runner.monitoring)
+        for index, busy in enumerate((ios_busy, android_busy)):
+            self.platform_badges[index].set_status(busy, self.platform_device_counts[index])
+        self.platform_tick += 1
+        if not self.isVisible() or self.platform_count_scanning or self.platform_tick % 25 != 1:
+            return
+        self.platform_count_scanning = True
+        tools = self.android_panel.tools()
+        def scan_counts():
+            from android_backend import AndroidRunner
+            result = {}
+            try:
+                sims = scan_simulators()
+                phones = scan_devices()
+                result[0] = sum(d.get('state') == 'Booted' for d in sims) + sum(d.get('state') == 'connected' for d in phones)
+            except Exception: result[0] = None
+            try:
+                devices = AndroidRunner(tools, lambda _: None, lambda _: None).scan()
+                result[1] = sum(d.get('state') == 'device' for d in devices)
+            except Exception: result[1] = None
+            self.events.platform_counts.emit(result)
+        threading.Thread(target=scan_counts, daemon=True).start()
+
+    def platform_counts_updated(self, result):
+        self.platform_count_scanning = False
+        for index in (0, 1):
+            self.platform_device_counts[index] = result.get(index)
+
+    def platform_changed(self, index):
+        self.settings['platform'] = 'android' if index == 1 else 'ios'
+        try:
+            self.settings_path.parent.mkdir(parents=True, exist_ok=True)
+            self.settings_path.write_text(json.dumps(self.settings, indent=2))
+        except OSError as error:
+            self.status.setText('Không lưu được tab: ' + str(error))
 
 
 def main():

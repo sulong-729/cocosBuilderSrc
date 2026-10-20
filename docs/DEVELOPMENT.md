@@ -6,12 +6,12 @@ Use two separate Git repositories:
 
 | Repository | Visibility | Branches | Contents |
 | --- | --- | --- | --- |
-| `cocosBuilderSrc` | Private | `main`, `dev` | Application source, tests, assets, packaging configuration, and maintainer documentation |
-| `cocos-ios-builder-download` | Public | `dowload-v101` | Installer through Git LFS, checksum, README, and User Guide |
+| `cocosBuilderSrc` | Public | `main`, `dev` | Application source, tests, assets, packaging configuration, and maintainer documentation |
+| `cocos-ios-builder-download` | Public | `dowload-v102` | Installer through Git LFS, checksum, README, and User Guide |
 
 These are the intended repository names; remote URLs must be verified before
-pushing. Never make the source repository public to expose only a download branch:
-GitHub visibility applies to the whole repository.
+pushing. The owner chose to keep source public for 1.0.2. GitHub visibility
+applies to the whole repository.
 
 The public repository must be initialized independently and have no parent
 commit or shared source history from this repository. Push only the named refs;
@@ -112,13 +112,13 @@ git push origin dev
 After review and verification, update `main` through your normal merge or pull
 request process. Never push source commits to the public download repository.
 
-Before the first remote push, confirm that the source destination is private:
+Before pushing, verify the source destination and its chosen visibility:
 
 ```sh
 gh repo view OWNER/cocosBuilderSrc --json nameWithOwner,visibility,url
 ```
 
-Only after that output reports `PRIVATE`, configure/push the source remote:
+For 1.0.2 the chosen source visibility is `PUBLIC`. Configure/push only the verified source remote:
 
 ```sh
 git remote add origin git@github.com:OWNER/cocosBuilderSrc.git
