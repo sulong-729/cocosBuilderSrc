@@ -7,7 +7,7 @@ Use two separate Git repositories:
 | Repository | Visibility | Branches | Contents |
 | --- | --- | --- | --- |
 | `cocosBuilderSrc` | Public | `main`, `dev` | Application source, tests, assets, packaging configuration, and maintainer documentation |
-| `cocos-ios-builder-download` | Public | `dowload-v102` | Installer through Git LFS, checksum, README, and User Guide |
+| `cocos-builder-duo-native` | Public | `dowload-v102` | Installer through Git LFS, checksum, README, and User Guide |
 
 These are the intended repository names; remote URLs must be verified before
 pushing. The owner chose to keep source public for 1.0.2. GitHub visibility
