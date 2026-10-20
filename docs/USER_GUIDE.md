@@ -1,430 +1,406 @@
-# Cocos iOS Builder — User Guide
+# Cocos Builder Duo Native — Installation and User Guide
 
-This guide covers version **1.0.2**. The UI is primarily Vietnamese; the
-instructions below pair the visible labels with English explanations.
+**Version 1.0.2 · Apple Silicon macOS · iOS and Android APK**
 
-## 1. What the tool does
+The download repository is named **Cocos Builder Duo Native**. After installation,
+the app appears in Applications as **cocos builder**. The UI is mainly Vietnamese;
+this guide uses the exact visible labels alongside English explanations.
 
-Cocos iOS Builder runs the normal Cocos and Apple build tools from a desktop UI:
+## Start here
 
-1. Inspect a Cocos Creator project's saved iOS build configuration.
-2. Export the iOS native project using the matching Cocos Creator CLI.
-3. Apply the tool's compatibility and signing settings to generated output.
-4. Compile the `*-mobile` application scheme using `xcodebuild`.
-5. Optionally install and launch the app on the selected Simulator or iPhone.
+1. [Check requirements](#requirements).
+2. [Download, verify and install](#install-the-macos-app).
+3. [Prepare your Cocos project](#prepare-your-cocos-project).
+4. Follow either [Android](#android-build-and-run) or [iOS](#ios-build-and-run).
+5. If an action fails, use [Troubleshooting](#troubleshooting).
 
-It can also run a compatible existing build, observe Simulator logs, manage
-Simulator devices, and inspect native crash reports. It does not replace Xcode
-for signing setup, provisioning, native debugging, or distribution to Apple.
+An Android-only project does not need an iOS task or Apple signing configuration.
+Choose the platform you need rather than completing both setup paths.
 
-## 2. Compatibility and requirements
+## Requirements
 
-| Requirement | Details |
+| Component | Required for |
 | --- | --- |
-| Mac CPU | Apple Silicon arm64, including M-series Macs |
-| macOS | 14.4 or newer for the bundled Qt app; the chosen Xcode may require a newer macOS |
-| Packaged runtime | Python 3.15 and PySide6-Essentials 6.12.0 are included |
-| Xcode | Full Xcode with usable iOS SDK and the `devicectl`/`simctl` tools; Command Line Tools alone are insufficient |
-| Cocos Creator | Install the exact `creator.version` recorded by the project |
-| Project layout | Creator 3.x project root containing `package.json` and `assets/` |
-| Build task | Saved iOS task in `profiles/v2/packages/builder.json`, or `buildCmd/buildConfig_ios.json` |
-| Physical iPhone | Paired/trusted, reachable, unlocked as needed, Developer Mode enabled, and development signing configured |
-| Simulator | Installed and available iOS runtime compatible with the generated app architecture |
+| Apple Silicon Mac, macOS 14.4+ | This packaged macOS app; individual Xcode/Studio versions may require newer macOS |
+| Exact project Cocos Creator version | Both platforms; read `creator.version` in `package.json` |
+| Cocos project root with `package.json` and `assets/` | Both platforms |
+| Saved Cocos build task for the selected platform | iOS or Android respectively |
+| Full Xcode, selected Command Line Tools and usable iOS SDK | iOS builds |
+| Installed compatible iOS Simulator runtime | iOS Simulator |
+| Trusted iPhone, Developer Mode and working development signing | Physical iPhone |
+| Android Studio / SDK Platform / Build Tools / Platform Tools / NDK / compatible JDK | Android APK builds |
+| Emulator + Command-line Tools + an installed system image | Android emulators |
+| USB debugging, or Wireless debugging with Mac and phone on the same Wi-Fi | Physical Android phone |
 
-### Supported engine range
+Python 3.15, PySide6/Qt and the QR library are bundled. You do not need to install
+Python or Qt separately for the PKG. Platform tools, runtimes, SDK licenses and
+project dependencies are separate. The app reports missing components and tells
+you where to install them; it does not silently download or license them.
 
-The tool accepts Creator **3.x** projects. Compatibility handling is focused
-on Creator **3.7.x**, including 3.7.3. Custom extensions and native templates can
-need additional work. “Accepted project” does not mean every Creator 3.x release
-has been verified on a device.
+Creator 3.x projects are accepted; compatibility work mainly targets 3.7.x,
+including 3.7.3. Every engine version, extension and native template has not been
+verified. Windows/Linux hosts, Intel Mac installers, Creator 2.x, Android AAB,
+IPA export, App Store/TestFlight/Play Store publishing and automatic certificate
+setup are outside this release's scope.
 
-The current architecture selection is:
+## Install the macOS app
 
-| Target | Architecture chosen by the tool |
-| --- | --- |
-| Physical iPhone | arm64 |
-| Simulator, Creator earlier than 3.8 | x86_64 |
-| Simulator, Creator 3.8 or later | arm64 |
+### Download the correct two files
 
-For Creator 3.7.x on Apple Silicon, use an iOS Universal Runtime that supports
-x86_64 and install Rosetta as required by your system. An arm64-only runtime is
-not sufficient for an x86_64 Simulator app. Runtime availability depends on the
-installed Xcode and macOS; choose an installed compatible runtime instead of
-assuming any particular iOS version is available.
+Open the [download page](https://github.com/sulong-729/cocos-builder-duo-native/tree/dowload-v102), then download:
 
-### Outside the supported scope
+- [cocos-builder-1.0.2-macOS-arm64-development.pkg](https://media.githubusercontent.com/media/sulong-729/cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg?download=1)
+- [cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256](https://raw.githubusercontent.com/sulong-729/cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256)
 
-- Mac Intel installers and universal Mac installers.
-- Windows or Linux hosts, Cocos Creator 2.x, and Android App Bundle (AAB) output.
-- App Store Connect/TestFlight publishing, IPA export, and automatic certificate setup.
-- Automatic Xcode, Cocos Creator, iOS runtime, or Rosetta installation.
-- Independent live iPhone stdout/stderr streaming.
-- LLDB attachment, breakpoints, sanitizers, and guaranteed source-level symbolication.
-- Verification that a game is stable merely because the build or launch succeeded.
+Use the direct PKG link. The installer is about **149.7 MB** and is stored with
+Git LFS. A tiny text file beginning `version https://git-lfs.github.com/spec/v1`
+is a pointer, not an installer. Do not use the repository's ZIP archive.
 
-## 3. Download and verify the installer
+### Verify the download
 
-Use the `dowload-v102` branch in the public download repository. Download the
-`.pkg` using the README direct link or **Download raw file**, and download its
-matching `.sha256` file. The PKG is stored with Git LFS; do not use an LFS
-pointer file or a repository ZIP archive as the installer.
-
-For the currently prepared development build, the files are:
-
-```text
-cocos-builder-1.0.2-macOS-arm64-development.pkg
-cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256
-```
-
-In Terminal, change to the folder containing both files and run:
+Put both files in the same directory. If you used Downloads, open Terminal and run:
 
 ```sh
+cd ~/Downloads
 shasum -a 256 -c cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256
 ```
 
-Expected result: the installer filename followed by `OK`. A checksum mismatch
-means the files do not belong together or the download changed; download the
-matching files again. Checksums check file integrity, not Apple notarization.
+Expected output:
 
-### Signing status of this build
-
-The prepared 1.0.2 development build uses an ad-hoc app signature. The installer
-is unsigned and has not been notarized by Apple. Gatekeeper may refuse it or
-suggest moving the app to Trash after an Internet download. The tool cannot
-approve its own security status.
-
-For a normal end-user distribution, the maintainer must generate a Developer
-ID signed and notarized installer. If macOS blocks a development copy, obtain
-the signed release from the maintainer. Administrator authorization during
-installation does not override Gatekeeper.
-
-## 4. Install and open
-
-1. Open the `.pkg` in Finder.
-2. Read the Installer introduction and destination information.
-3. Proceed with installation into `/Applications/cocos builder.app`.
-4. When macOS Installer requests administrator authorization, authenticate using
-   the system dialog. The system determines whether to request a password,
-   Touch ID, or reuse an authorization already granted in the current session.
-5. Open **cocos builder** from Applications.
-
-No separate Python or Qt installation is needed for the packaged app. Internet
-access may still be required for Apple's signing/provisioning services, project
-dependencies, or installing external prerequisites.
-
-The app itself runs as your user. It does not ask for permanent root access or
-request administrator permission every time you launch it.
-
-## 5. Prepare Xcode, Cocos, and your project
-
-### Xcode
-
-1. Install full Xcode compatible with your macOS and target iOS version.
-2. Open Xcode once and finish its first-launch setup and license prompts.
-3. In Xcode Settings, select the intended Xcode under Locations → Command Line Tools.
-4. Install the required iOS Simulator runtime through Xcode if using Simulator.
-5. For iPhone builds, add your Apple account and establish a working development
-   certificate/provisioning setup in Xcode.
-
-Useful diagnostic commands:
-
-```sh
-xcode-select -p
-xcodebuild -version
-xcrun --sdk iphoneos --show-sdk-path
-xcrun simctl list runtimes
+```text
+cocos-builder-1.0.2-macOS-arm64-development.pkg: OK
 ```
 
-These commands inspect the active tools; they do not configure signing for you.
+If the filename is different, or verification fails, download the matching pair
+again. A checksum verifies integrity; it does not certify Apple notarization.
 
-### Cocos Creator
+### Install and launch
 
-1. Read `creator.version` in your project's `package.json`.
-2. Install that exact version using Cocos Dashboard.
-3. Open the project in Cocos and save an iOS build task at least once.
-4. Configure scenes, startup scene, bundles, and extensions in Cocos as required.
-5. Close or pause other builds of the same project before using this tool.
+1. Quit an older running copy of cocos builder before updating.
+2. Double-click the PKG in Finder.
+3. Follow Installer to install into `/Applications/cocos builder.app`.
+4. Authorize installation through the macOS system dialog when requested.
+   macOS may reuse authorization from the current session.
+5. Open **Applications → cocos builder** and check version **1.0.2** in the title.
 
-The default Creator executable path is:
+The app runs under your user account after installation. Existing project outputs
+and settings are separate from the app bundle and can remain after an update.
+
+### Installation problems
+
+**Current signing status:** this is a development preview: ad-hoc signed app,
+unsigned PKG, no Developer ID and no Apple notarization. Gatekeeper may refuse it
+or suggest moving it to Trash. If blocked, verify the checksum and request a
+signed/notarized build from the maintainer. Administrator authorization does not
+override Gatekeeper. This guide does not require disabling macOS security.
+
+If a download produces an HTML error page or a tiny LFS pointer, return to the
+current README and use its direct installer link. If Installer says the package
+is invalid, re-download and verify before trying again.
+
+## Prepare your Cocos project
+
+1. Find the game folder containing `package.json` and `assets/`.
+2. Read `creator.version` from `package.json` and install that exact Creator
+   version with Cocos Dashboard. A different installed Creator is not a substitute.
+3. Open the project in Creator, open its Build panel, choose iOS or Android, and
+   save a build task with scenes and a valid startup scene.
+4. Add/select this project in the tool's left sidebar. You can also drop the
+   project root onto the supported project drop area.
+5. Choose **iOS** or **Android** at the top. The platform's saved task and settings
+   are restored separately for each project.
+
+Do not select `assets/`, the exported Xcode/Gradle project, or a generated output
+folder as the project root. Avoid concurrent Cocos GUI or other tool builds that
+write to the same project/output.
+
+The usual Creator executable path is:
 
 ```text
 /Applications/Cocos/Creator/<version>/CocosCreator.app/Contents/MacOS/CocosCreator
 ```
 
-If installed elsewhere, use **Chọn Cocos…** (Choose Cocos) to select the
-executable. Selecting the project root is essential; do not select `assets/`,
-the generated Xcode project, or an exported build folder.
+If Creator is installed elsewhere, choose the matching executable through the
+platform's Cocos path selector. After installing a missing component, use its
+check/refresh control again.
 
-### iPhone preparation
+## Android build and run
 
-Connect and trust the Mac, enable Developer Mode, pair the device in Xcode,
-and make sure its iOS version is supported by the selected Xcode. USB is the
-simplest initial setup. Already paired network devices can appear when Apple's
-tools report them as reachable; the tool does not perform initial pairing.
+### 1. Install and select Android tools
 
-Simulator does not require Apple development signing. A physical iPhone does.
-The Team ID and Bundle ID used to sign the iPhone game are separate from the
-Developer ID certificates used to distribute this macOS tool.
+1. Install Android Studio and finish its initial setup.
+2. Open Studio's **Tools → SDK Manager**. Install the required SDK Platform
+   under SDK Platforms. Under SDK Tools install **Android SDK Build-Tools**,
+   **Android SDK Platform-Tools**, and **NDK (Side by side)**.
+3. For AVDs also install **Android Emulator**, **Android SDK Command-line Tools
+   (latest)** and a suitable system image. Accept the required licenses in Studio.
+4. In cocos builder, select **Android → Công cụ Android**. Choose the installed
+   Studio bundle and check the SDK, NDK and Java Home fields.
+5. Run **Kiểm tra công cụ**. Resolve the named missing package or path before
+   building. Red/yellow logs and the setup notice explain what needs attention.
 
-## 6. Select the project and destination
+On a default macOS setup, the SDK is commonly `~/Library/Android/sdk` and an NDK
+is under `~/Library/Android/sdk/ndk/<version>`. Select your actual installation.
+Java Home must point to the JDK home, not directly to `bin/java`.
 
-1. Drop the Cocos project folder onto the tool, or use its project chooser.
-2. Open **Cài đặt** (Settings).
-3. Select the saved **Cấu hình Cocos** (Cocos configuration).
-4. Under **Chạy trên** (Run on), choose physical iPhone or iOS Simulator.
-5. Click the refresh icon and choose the destination under **Thiết bị** (Device).
-6. Check the **Bundle ID**, **Apple Team ID** for physical builds, and Creator path.
-7. Expand **Cocos iOS Build Config** to review the build options.
+Selecting a newer Studio does not make an old Gradle wrapper compatible with its
+newer Java. The tool checks the wrapper and chooses a compatible **installed**
+JDK when available. The tested Gradle 6.5.1 project used JDK 11. New SDK utilities
+can need JDK 17+; the tool selects their Java environment separately. If the
+required Java is absent, install it and select/check the paths again.
 
-The tool checks for the matching Creator installation and full Xcode when the
-project or Creator path changes and before building. Use **Kiểm tra lại**
-(Check again) after installing or fixing a prerequisite.
+### 2. Check the Android build task
 
-Selections and edited options are remembered by project/task. Changing projects
-restores that project's saved choices rather than applying a single global
-configuration to every project.
+Select the saved Android task and expand **Cocos Android Build Config**:
 
-## 7. Choose the correct action
-
-| Action | Export/compile | Device required | Installed-app behavior |
-| --- | --- | --- | --- |
-| Build | Exports when needed and compiles | No | Saves a build on the Mac; does not install or launch |
-| Build & Run | Exports when needed and compiles | Yes | Installs only when the app is absent; preserves an existing installation |
-| Run | Uses an existing compatible build | Yes | Preserves the existing installed copy; no Cocos export or Xcode compile |
-| Clean & Run | Uses an existing compatible build | Yes | After confirmation, uninstalls the selected app, deletes its device data, installs the build, and launches it |
-
-### First launch on a Simulator
-
-1. Select Simulator and a compatible device.
-2. Leave native-only mode off for the first export.
-3. Click **Build & Run**.
-4. The tool exports through Cocos, compiles through Xcode, boots the selected
-   Simulator if needed, installs the game if absent, and launches it.
-5. If independent log capture is enabled, the tool follows the captured output.
-
-### Deploy changed game code or assets
-
-1. Save your project changes.
-2. Click **Build**, or **Build & Run** if you also want the normal run flow.
-3. Check the build result and selected device.
-4. If the same Bundle ID is already installed, use **Clean & Run** to replace it
-   with the newly built app. Read and confirm the data-deletion prompt.
-
-Normal Run/Build & Run deliberately preserves an installed app. Seeing the old
-version after a successful build is expected in this case. Clean & Run does not
-compile changes for you; build first. Back up valuable game data before using it.
-If the compatible build is missing, the tool stops before deleting the installed
-app. Device deployment can still fail after an intentional uninstall, so local
-build validation cannot guarantee reinstall success.
-
-### Build for an iPhone
-
-1. Choose physical iPhone mode and a reachable device for run actions.
-2. Set the 10-character Apple Team ID and a Bundle ID that the team can sign.
-3. Ensure Developer Mode and trust/pairing are enabled.
-4. Click Build or Build & Run.
-5. Resolve certificate/provisioning errors in Xcode if Apple rejects signing.
-
-Build can compile for a generic physical-device destination without a selected
-phone, but development signing is still required. Run checks the available app's
-Bundle ID, platform, architecture, and selected Debug/Release configuration.
-
-## 8. Build configuration reference
-
-| Setting | Meaning |
+| Field | Check before building |
 | --- | --- |
-| Debug / Release | Selects the native build configuration |
-| Build name | Name copied into the generated Cocos configuration |
-| Output directory / subdirectory | Controls the Cocos export location |
-| MD5 Cache | Enables the corresponding Cocos build option |
-| Source Maps | Requests Cocos source maps |
-| Auto Atlas | Uses the Cocos auto-atlas build option |
-| Skip texture compression | Uses Cocos's corresponding texture-compression option |
-| Main bundle compression | Selects the Cocos main-bundle compression mode |
-| Minimum iOS | Sets the target deployment version, subject to the SDK/toolchain |
-| Auto Rotate | Adds a reversible override to supported generated iOS orientation methods |
-| Orientation checkboxes | Select allowed portrait/landscape orientations; at least one is required for Auto Rotate |
-| Metal | Selects the saved Cocos iOS Metal backend option |
-| Script encryption / XXTEA key | Controls native script encryption in the generated game configuration |
-| Native ZIP compression | Controls Cocos's native compression setting |
-| Scenes / startup scene | Chooses included scenes and the startup scene from the available catalog |
-| Restore Cocos configuration | Restores the saved Cocos task options for editing in the tool |
+| Scenes / startup scene | Include the intended scene and select it as startup |
+| Package ID | Use the app's real Java-style ID, for example `com.company.game` |
+| Debug / Release | Use Debug for initial device testing |
+| ABI | Match the target; the tested ARM64 emulator used `arm64-v8a` |
+| Target API | Ensure the needed SDK Platform is installed |
+| minSdk / compileSdk overrides | Set only when needed; minSdk cannot exceed target and compileSdk cannot be below target |
+| Version code / name | Optional generated Gradle overrides |
+| Orientations / native options | Confirm the intended Cocos settings |
 
-Auto Rotate changes the project's generated
-`native/engine/ios/ViewController.mm` when compatible methods exist. Disabling
-it removes the tool's marked override and restores the original method bodies.
-The tool does not edit `native-templates` for this feature. Custom controllers
-can require a different implementation.
+Tool edits are stored separately from iOS. Keep **Chỉ build Gradle từ bản export
+hiện tại** unchecked for a first build or after changing scripts/assets. Native-only
+mode is for an existing matching Cocos export; the tool rejects stale build records
+or requests a fresh export when needed.
 
-Treat XXTEA keys and saved project settings as sensitive. Do not upload the
-settings file or generated project configurations to the public download repo.
+### 3A. Use an Android emulator
 
-## 9. Cache and native-only builds
+1. Choose **Máy ảo Android**.
+2. Click **Refresh**. It prefers an already running emulator, keeping the current
+   selected one if that machine is already running. Running rows have green dots.
+3. If no suitable AVD exists, click **＋ Tạo AVD**. Choose an installed system
+   image/model and a name. Install missing images in Studio first.
+4. Select the AVD in the single target dropdown. Its green power icon boots a
+   stopped AVD; a red power icon shuts down a running AVD after confirmation.
+5. Wait for Android to finish booting. Inventory updates automatically; use
+   Refresh if needed. An AVD name without a running serial is not a ready device.
+6. Confirm the selected row shows the intended machine, then click Build & Run.
 
-- **Dùng output/cache hiện có** (Reuse current output/cache) uses the selected
-  Cocos task's existing output location, commonly `<project>/build/ios/`.
-- When disabled, output is isolated under
-  `<project>/build/ios-builder/device/ios/` or
-  `<project>/build/ios-builder/simulator/ios/`.
-- The normal incremental check uses configuration, paths, file sizes, and
-  modification times to decide whether Cocos export can be skipped.
-- **Buộc xuất lại Cocos** (Force Cocos export) bypasses the incremental hit for
-  normal builds. Use it when uncertain about linked assets or stale exports.
-- **Chỉ build native** (Native-only) reuses an existing export and skips Cocos
-  export. Use it only when that export already contains your intended content.
-- Editing relevant build options through the UI invalidates native-only for
-  that changed configuration. After source/asset changes, normal export remains
-  the appropriate workflow.
+All AVD actions address the selected dropdown target. **Mở AVD đã chọn** opens it;
+the trash icon deletes the AVD and its data after confirmation and refuses running
+AVDs. Power-off ends apps on that machine. Refresh highlights briefly every four
+seconds when no emulator is selected. Background polling preserves your target;
+it does not silently switch to another machine.
 
-A stat-based cache is not a full content hash. Content changes that preserve
-size/timestamps, or changes inside some symlinked content, can require forcing
-export. Switching between simulator/device or Debug/Release can trigger native
-recompilation even when Cocos export is reused. Avoid concurrent Cocos GUI or
-other build-tool runs against the same project.
+### 3B. Use a phone over USB
 
-## 10. Simulator controls
+1. On the phone enable Developer options and **USB debugging**.
+2. Connect a USB data cable, unlock the phone and accept its RSA / Allow USB
+   debugging prompt for this Mac.
+3. Choose **Điện thoại thật** in the tool. Emulator controls are replaced with
+   phone connection controls.
+4. Click **Kết nối USB / Quét lại** and select the phone in the target dropdown.
+5. Resolve `unauthorized` on the phone, or reconnect if `offline`, before Run.
 
-| Control | Behavior |
+### 3C. Use a phone over Wi-Fi
+
+Keep the Mac and phone on the same network and enable **Wireless debugging**.
+
+**QR pairing:** on a compatible Android 11+ phone, open Developer options →
+Wireless debugging → **Pair device with QR code**. In the tool click **Kết nối
+Wi-Fi bằng QR…**, then scan that QR with the phone's Wireless debugging scanner.
+Use the code within two minutes. Closing the dialog cancels the pairing session.
+Pairing secrets are not saved in tool settings or printed in logs.
+
+**Pairing code:** open **Pair device with pairing code** on the phone. Enter its
+pairing `host:port` in the tool, click **Pair bằng mã…** and enter the six-digit
+code. Then use the separate connection `host:port` shown by Wireless debugging
+and click **Connect Wi-Fi**. Pairing and connection ports can be different.
+
+Pairing alone does not prove the device is connected. Confirm a ready phone row
+appears and select it. If discovery fails, check the network's mDNS support,
+Wireless debugging, Platform Tools version and any Local Network permission.
+QR pairing has automated protocol coverage but still needs physical-phone validation.
+
+### 4. Build, install and run
+
+| Action | Result |
 | --- | --- |
-| Refresh | Rescans available devices/runtimes |
-| Create (+) | Chooses an installed compatible runtime, model, and name; selects the new Simulator |
-| Show/open | Brings Simulator to the foreground; may boot the selected device |
-| Power | Explicitly boots or shuts down the selected Simulator |
-| Reload/restart | Reboots the selected Simulator while keeping its data; does not automatically run the game |
-| Delete | Deletes the selected Simulator and its data after confirmation |
+| Build APK | Export through Cocos and build an APK with Gradle; no device needed |
+| Build & Run | Build, validate the selected device, install the APK and launch it |
+| Run APK đã build | Validate and run an existing recorded APK without rebuilding |
+| Chọn APK… | Select a different local APK explicitly; it must match the task Package ID |
+| Clean & Run… | Validate the APK, ask for confirmation, uninstall the selected package/data and reinstall/launch |
+| Dừng | Cancel the current foreground task's owned process group |
 
-The running indicator describes Simulator/device state, not game stability.
-Shutdown/restart ends apps on that selected Simulator. Deletion checks for
-running apps and can refuse until they are closed. Management actions are
-restricted while a build or conflicting log/action session is active.
+Normal Android install uses `adb install -r`: it updates/reinstalls the package
+and normally retains app data. Signature/package/version constraints can still
+cause installation to fail. Clean & Run deletes data; use it intentionally.
+The recorded APK is checked for signature, package, hash, matching build inputs,
+device ABI and minimum Android API before the relevant run steps.
 
-The selected **Device log** source is independent of the Build/Run destination.
-Showing another Simulator does not automatically move your log source or run a
-game on it.
+Build & Run remains clickable when setup is incomplete so a notification can
+explain what is missing. It still requires a saved Android task and a ready
+selected device to complete. Read the first actionable error in the log.
 
-## 11. Logs and crash reports
+### 5. Read Android runtime logs
 
-### Build logs
+Selecting a running device automatically starts **Logcat in the shared Android
+log panel**, even before Run. A stopped selected AVD is followed when it becomes
+available. Switching the target switches the stream. Logs continue during builds.
 
-The UI shows recent output and supports case-insensitive search and
-All/Error/Warning filters. Clear log clears the view, not the saved file. The
-view retains up to 5,000 recent lines.
+This is the selected device's full Logcat and can include system/other-app logs.
+Use search and severity filters to narrow it. There is no separate Logcat button,
+Android crash-buffer action, Mở output button or Mở project trong Studio button.
+To inspect generated output manually, use the project's selected Cocos export
+folder in Finder or open its Gradle project directly in Studio.
 
-Tool-generated logs and configuration are stored per project under:
+## iOS build and run
 
-```text
-<project>/build/ios-builder/device/
-<project>/build/ios-builder/simulator/
-```
+### 1. Prepare Xcode and a destination
 
-Subfolders include `logs/`; generated metadata includes `builder-config.json`
-and `last-built.json`. Simulator stdout/stderr records are under the Simulator
-log folder's `app-output/` directory.
+1. Install full Xcode compatible with your macOS and target iOS. Open it once and
+   finish initial setup and license prompts.
+2. In Xcode Settings → Locations, select the intended Command Line Tools.
+3. For Simulator, install a compatible iOS runtime. For Creator before 3.8 the
+   tool selects x86_64; Creator 3.8+ uses arm64. A Creator 3.7.x build therefore
+   needs a runtime supporting x86_64, and Rosetta where required by the system.
+4. For iPhone, connect/trust/pair it in Xcode, enable Developer Mode and establish
+   working Apple development signing. Simulator does not need that signing.
 
-### Independent Simulator observation
+### 2. Select task and build
 
-Enable **Thu log độc lập** (Independent log capture) to follow output after
-launch. **Ngắt log** (Disconnect log) or closing the tool stops the observer;
-it does not intentionally stop the game. If the game exits, the tool reports
-that condition and does not automatically restart it.
+1. Open **iOS → Cài đặt**, select the saved Cocos iOS task and correct Creator.
+2. Set the game's Bundle ID. For iPhone, select the 10-character Apple Team ID.
+3. Choose Simulator or iPhone mode. Refresh and select the intended destination.
+   Refresh prefers a booted Simulator; green dots identify booted rows.
+4. Check **Cocos iOS Build Config**, scenes and Debug/Release. Keep native-only
+   mode off for the first export.
+5. Click Build & Run. The tool exports Cocos, compiles with Xcode, prepares the
+   selected destination and launches the app. Check the log and game window.
 
-Games launched outside the tool may have no captured stdout/stderr files.
-Observation then uses unified logs by process ID, which may not include every
-JavaScript `console.log`. Independent live iPhone log observation is currently
-unavailable; the tool avoids attaching a `devicectl` console session to the game.
+### 3. Choose the correct iOS deployment action
 
-### Native crashes
+| Action | Compile? | Existing installed game |
+| --- | --- | --- |
+| Build | Yes | No device install/launch |
+| Build & Run | Yes | Preserves an existing installation; installs only if absent |
+| Run | No; requires a compatible existing build | Preserves an existing installation |
+| Clean & Run | No new compile; build first | Asks before uninstalling the selected app/data and installing the built copy |
 
-The Crash tab scans local `.ips` reports roughly every three seconds. For a
-physical iPhone, export a crash report using Apple's tools and open the `.ips`
-file manually in the panel.
+**To see changed iOS code/assets:** save changes → Build → confirm build success →
+Clean & Run if the same Bundle ID is already installed and deleting its data is
+acceptable. Normal Run can show the older installed game even after a new build.
+This differs from Android's normal reinstall/update behavior.
 
-Frame resolution uses local symbols only when UUID and architecture match.
-Source excerpts appear only when the resolved frame points to an existing
-source file and line. Missing or mismatched symbols mean function names/lines
-can remain unresolved. Use Xcode/LLDB for deep native debugging.
+Xcode certificate/provisioning failures must be resolved in Xcode. The game's
+Apple development signing is separate from Developer ID/notarization used to
+distribute this macOS tool.
 
-## 12. Settings, modified files, and removal
+### Simulator management and iOS observation
 
-User settings are stored at:
+Create chooses an installed runtime/model. Power is green to boot and red to
+shut down. Show/reload actions operate on the selected machine; restarting ends
+its apps but keeps its data. Delete removes the selected Simulator/data after
+confirmation and may refuse until running apps are closed.
 
-```text
-~/Library/Application Support/Cocos iOS Builder/settings.json
-```
+**Thu log độc lập** enables independent Simulator observation after Run. The iOS
+Device log source is separate from the Build/Run destination. **Ngắt log** or
+closing the observer does not intentionally stop the game. Externally launched
+apps may lack captured stdout/stderr; unified logs may omit JavaScript output.
+Independent live iPhone console capture is not available in this version.
 
-The tool creates generated build configs and metadata in the selected project,
-uses Cocos's normal export/import/cache process, and applies compatibility,
-Info.plist/signing, and supported rotation changes to generated/native output.
-It does not rewrite the original saved Cocos build profile or the installed
-Creator engine. Native generated files inside the project can change.
+The iOS Crash / Native panel reads local `.ips` reports. For a phone, export the
+report with Apple's tools and import it. Frame/source resolution needs matching
+local symbols, UUID, architecture and source files; use Xcode/LLDB for deeper work.
 
-To remove the tool, quit it and move `/Applications/cocos builder.app` to Trash.
-The settings folder and each project's generated outputs/logs are separate.
-Keep any logs or builds you need before deleting those folders manually.
-Uninstalling the tool does not remove Xcode, Cocos, Simulator devices, or the
-games already installed on your devices.
+## Shared status and log controls
 
-## 13. Troubleshooting
-
-| Symptom | What to check |
+| Indicator/control | Meaning |
 | --- | --- |
-| macOS says the app is damaged or suggests Trash | Check release signing status and checksum. The current development build is not notarized; request a signed build. |
-| Installer asks for a password | Expected for a system-wide `/Applications` installation; authenticate only through the macOS Installer dialog. |
-| Installer does not ask again | macOS can reuse authorization in the current session; the tool cannot force the system to prompt every time. |
-| Creator not found | Install the exact project version or correct the executable path, then click Check again. |
-| Xcode not ready | Open full Xcode, finish setup, and select its Command Line Tools. |
-| No saved iOS task | Create/save an iOS configuration in Cocos first, or supply the supported fallback file. |
-| No Simulator runtime is offered | Install a runtime compatible with your Xcode, macOS, and required app architecture. |
-| Creator 3.7.x Simulator architecture error | Verify x86_64 support/Universal Runtime and Rosetta availability. |
-| iPhone is missing | Check USB/trust/pairing, Developer Mode, unlock state, and Xcode device support; refresh. |
-| Signing/provisioning failure | Verify Team ID, Bundle ID, development certificate/private key, and provisioning in Xcode. |
-| Build completed but old game appears | Normal deployment preserves an installed copy. Build first, then use Clean & Run if deleting its data is acceptable. |
-| Run cannot find an app | Build the matching Debug/Release, Bundle ID, platform, and architecture first. |
-| New asset/script is missing | Leave native-only mode off and force Cocos export if the incremental cache is stale. |
-| Project is locked | Finish or stop the other build/run session using that project's tool lock. |
-| Some JavaScript logs are absent | Unified logs are incomplete for some externally launched apps; launch through the tool with capture or use native debugging. |
-| Crash frames have no source lines | Match the exact build's symbols and architecture; ensure referenced source paths exist. |
+| Platform icon | iOS or Android tab |
+| Animated spinner | That platform has foreground work; log observation alone does not mean a build is active |
+| Device icon + count | Running simulators/emulators and connected ready phones; not the number of games running |
+| Green device dot | Device is booted/ready, not proof that gameplay is healthy |
+| White log | Ordinary output |
+| Yellow log | Warning or setup notice |
+| Red log | Error/failure |
+| Green Android parameters | Selected/installed SDK and NDK information |
+| Search / Tất cả / Error / Warning | Filter the visible log text and severity |
+| Clear log | Clear the in-app log view; does not delete existing saved build log files |
 
-When reporting a problem, include the tool version, Mac CPU/macOS, Xcode and
-Creator versions, destination/runtime, action used, relevant build-log section,
-and `.ips` report if applicable. Remove credentials, encryption keys, and private
-project content before sharing logs publicly.
+The log retains up to 5,000 recent lines. SDK/NDK information is emitted for
+Android Build/Run attempts, including unsuccessful attempts. Installed version
+ranges describe local availability, not a guaranteed supported SDK/NDK range.
+Build completion, device launch and gameplay correctness are separate results.
 
+## Advanced settings and generated files
 
-## Android APK workflow (1.0.2)
+Scenes, startup scene, Debug/Release, orientations, compression and supported
+native options are edited in the platform's build config. Unknown extension
+fields are retained. Relevant task settings are remembered per project; the tool
+does not rewrite the original saved Cocos build profile.
 
-The Android tab is independent of iOS tasks and signing. Install the matching
-Cocos Creator plus Android Studio, SDK Platform/Build Tools, Platform Tools,
-NDK, and a compatible JDK. Emulator management additionally needs Android
-Emulator, Command-line Tools and an installed system image. Missing components
-produce a setup banner, log entry and installation guidance.
+For iOS, **Dùng output/cache hiện có** reuses the configured Cocos output.
+**Buộc xuất lại Cocos** forces export when an incremental result is stale. Native-only
+modes reuse generated content and should be left off after script/asset changes.
+The incremental check uses metadata such as paths, sizes and timestamps; changes
+preserving those values or involving linked content can require a forced export.
 
-1. Select a project, open Android, and select its saved Android build task.
-2. Expand Android tools and select the local Studio, SDK, NDK and Java paths.
-   The tool selects an installed compatible JDK for Gradle; SDK utilities use
-   their own compatible Java environment. No JDK is silently downloaded.
-3. Check package ID, scenes, ABI, Debug/Release and SDK overrides in Cocos Android
-   Build Config. These settings are separate from iOS.
-4. Choose emulator or physical-phone mode. The single target dropdown controls
-   the exact selected device. Refresh prefers an already running emulator;
-   green row indicators identify running machines. The power icon is green to
-   boot a stopped AVD and red to shut down a running AVD. Deletion asks first.
-5. For a phone, enable USB debugging and authorize the Mac, or pair over Wi-Fi
-   by QR / pairing code. QR credentials are not persisted. Emulator buttons are
-   replaced with phone connection controls in physical-phone mode.
-6. Build APK, Build & Run, or run an existing validated APK. Clean & Run asks
-   before removing the selected app and its data. Build & Run stays clickable
-   and explains missing prerequisites instead of silently disabling itself.
+The iOS Auto Rotate option can modify supported generated
+`native/engine/ios/ViewController.mm` methods with a reversible marked override.
+Custom controllers may need manual work. Generated/native outputs, Info.plist and
+signing configuration can change during builds; the installed Creator engine is
+not rewritten by this tool.
 
-Picking a running device automatically streams its full Logcat into the main
-Android log panel, including other apps. Switching devices switches the stream.
-Logging continues during builds; no separate Logcat button is needed. Normal
-logs are white, warnings yellow, errors red, and SDK/NDK parameters green.
-SDK/NDK ranges describe locally installed versions, not an invented supported
-range. Platform tabs show work spinners and counts of running/connected devices.
-Refresh briefly highlights every four seconds while no emulator is selected.
+| Data | Location |
+| --- | --- |
+| User settings | `~/Library/Application Support/Cocos iOS Builder/settings.json` |
+| Android saved build logs | `<project>/build/android-builder/logs/` |
+| Android APK | Under the chosen Cocos export's Gradle build output; the resulting path is printed in the log/APK field |
+| Android emulator startup log | `~/Library/Logs/Cocos Android Builder/emulator.log` |
+| Isolated iOS device/simulator metadata and logs | `<project>/build/ios-builder/device/` and `<project>/build/ios-builder/simulator/` |
 
-APK export/build/install/launch was exercised with Cocos 3.7.3 on an ARM64
-emulator. Physical-phone QR pairing is covered by automated protocol tests but
-has not been verified with a physical phone. Gameplay authentication/stability
-and AVD creation/deletion remain outside the completed native verification.
+Treat settings and game logs as potentially sensitive. XXTEA/keystore secrets
+are stripped from tool settings, so enter required secret values again when
+needed. Never upload credentials, private keys or generated secret-bearing
+configs as a troubleshooting attachment.
+
+To uninstall, quit the app and move `/Applications/cocos builder.app` to Trash.
+Settings, project outputs, external SDKs, virtual devices and installed games
+remain separate; remove them manually only if you intend to lose that data.
+
+## Troubleshooting
+
+| Symptom | Next action |
+| --- | --- |
+| PKG is tiny or contains Git LFS text | Use the README direct download link, not the repo ZIP or pointer |
+| Checksum mismatch | Download the matching PKG/SHA-256 pair again; do not install that copy |
+| macOS says damaged/unidentified or suggests Trash | Check the development-signing status under Installation problems and obtain a trusted signed build |
+| Project/task list is empty | Select the real project root; open the matching Creator and save a task for the chosen platform |
+| Creator version is missing/wrong | Install the exact `creator.version` or correct its executable path, then check again |
+| `missing/avdmanager` / cannot create AVD | Install Command-line Tools (latest) in Studio SDK Manager; check SDK path and installed images |
+| Missing adb / aapt / apksigner | Install Platform Tools / Build Tools in the selected SDK and rerun the tool check |
+| No SDK Platform / NDK | Install the project's required versions in SDK Manager and select the actual paths |
+| Gradle rejects Java 21 or reports unsupported class version | Let the tool select a compatible installed JDK, or install/select one matching the generated wrapper |
+| avdmanager needs newer Java than the game | Install a suitable SDK-tool JDK; build Java and SDK-command Java are selected separately |
+| AVD name is visible but Run fails | Boot the selected AVD and wait until Android/ADB is ready; Refresh and select the running row |
+| Android phone is unauthorized/offline | Unlock it, accept RSA, check USB debugging/cable, or reconnect Wi-Fi |
+| QR timeout / phone does not appear | Regenerate QR; use Wireless debugging's scanner; check same network, mDNS and Platform Tools; verify connection after pairing |
+| APK does not match ABI / minimum API | Choose an ABI supported by the device or a compatible device/API; rebuild |
+| APK signature/version install error | Use a compatible signing key/version, or intentionally Clean & Run if deleting the old app/data is acceptable |
+| iOS runtime/architecture mismatch | Check the chosen Creator architecture and installed runtime; Creator 3.7.x needs x86_64 support |
+| iPhone is missing or signing fails | Check Xcode pairing/trust, unlock/Developer Mode, Team ID, Bundle ID and provisioning |
+| iOS shows an older installed game | Build first, then Clean & Run if data removal is acceptable |
+| Export/build seems stale | Turn native-only off and force a fresh Cocos export where available |
+| Project/output is locked | Finish/cancel the other owner of the same output; do not build it concurrently |
+| Android log contains unrelated messages | Full-device Logcat is expected; use search/severity filters and check the selected device |
+
+For a useful issue report, include tool version, Mac/macOS, Creator version,
+platform tools, selected destination, the button used, and the first relevant
+error with nearby logs. Distinguish build failure, install failure, launch failure
+and a crash after launch. Remove credentials and private game data before posting.
+
+## Verification scope for 1.0.2
+
+The automated suite has 132 passing checks. Fresh Cocos 3.7.3 ARM64 Android APK
+export/build/install/launch and automatic Logcat were verified on an emulator.
+The Qt Build & Run flow selected installed JDK 11 instead of JDK 21 for Gradle
+6.5.1. This does not verify authenticated gameplay, physical-phone QR pairing,
+or native AVD creation/deletion. Those remaining checks are stated explicitly.

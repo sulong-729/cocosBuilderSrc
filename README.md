@@ -1,4 +1,4 @@
-# Cocos iOS Builder
+# Cocos Builder — iOS and Android
 
 A macOS desktop tool for exporting, building, installing, and running Cocos
 Creator 3.x iOS and Android projects using Cocos CLI, Xcode and Gradle.
@@ -17,7 +17,7 @@ Mac. Signed distribution requires the release setup described below.
 | --- | --- |
 | Mac hardware | Apple Silicon, arm64 (M-series Macs) |
 | macOS | 14.4 or newer for the packaged app; Xcode can require a newer macOS |
-| Cocos projects | Creator 3.x projects with an existing iOS build task; the main compatibility work targets 3.7.x |
+| Cocos projects | Creator 3.x projects with a saved iOS or Android build task; the main compatibility work targets 3.7.x |
 | Android destinations | APK builds, Android emulators and USB / Wi-Fi phones; QR pairing |
 | iOS destinations | Physical iPhones and compatible installed iOS Simulator runtimes |
 | Build modes | Debug and Release; build only, build and run, run existing build, clean and run |
@@ -53,7 +53,9 @@ Python 3.15 and Qt/PySide6 are included in the installer. Xcode, Cocos Creator,
 and iOS Simulator runtimes are separate prerequisites. Installing the tool does
 not configure your Apple development signing account.
 
-## First build
+## First iOS build
+
+For Android, follow the [Android setup and build walkthrough](docs/USER_GUIDE.md#android-build-and-run).
 
 1. Open Xcode once, finish setup, select its Command Line Tools, and install the
    required iOS runtime if using Simulator.
