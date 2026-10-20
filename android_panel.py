@@ -97,6 +97,11 @@ class AndroidPanel(QWidget):
         self.native_only = QCheckBox('Chỉ build Gradle từ bản export hiện tại')
         self.native_only.setToolTip('Chỉ dùng khi asset/script/cấu hình không đổi; bình thường nên để tắt.')
         form.addWidget(self.native_only)
+        self.force_export = QCheckBox('Buộc xuất lại Cocos Android (bỏ qua cache export)')
+        self.force_export.setToolTip('Build thường tự dùng lại export khi đầu vào không đổi. Bật mục này để xuất mới toàn bộ.')
+        self.force_export.toggled.connect(lambda checked: self.native_only.setChecked(False) if checked else None)
+        self.native_only.toggled.connect(lambda checked: self.force_export.setChecked(False) if checked else None)
+        form.addWidget(self.force_export)
         content.addWidget(config_group)
         self.setup_devices(content)
         self.setup_build_actions(content)
@@ -413,6 +418,7 @@ class AndroidPanel(QWidget):
         self.build_config.setEnabled(bool(task))
         self.loading = False
         self.native_only.setChecked(False)
+        self.force_export.setChecked(False)
         self.update_actions()
 
     def reset_config(self):
@@ -806,6 +812,7 @@ class AndroidPanel(QWidget):
             AndroidRunner(self.tools(), self.events.log.emit, self.events.stage.emit).log_toolchain(options)
             self.warn_user('Cấu hình Android', error); return
         native_only = self.native_only.isChecked()
+        force_export = self.force_export.isChecked()
         if native_only:
             exported_options = make_android_config(options, self.tools(), options['packages']['android']['packageName'])
             record = export_folder(Path(root), exported_options) / '.android-builder-apk.json'
@@ -818,7 +825,7 @@ class AndroidPanel(QWidget):
             exported = export_folder(Path(root), make_android_config(options, runner.tools, options['packages']['android']['packageName']))
             if (exported / 'proj/gradlew').is_file(): runner.ensure_gradle_java(exported / 'proj')
             selected = runner.require_target(device) if run else None
-            apk = runner.build_apk(root, options, native_only)
+            apk = runner.build_apk(root, options, native_only, force_export=force_export)
             if run:
                 selected = runner.require_target(selected)
                 runner.install_run(apk, selected['serial'], options['packages']['android']['packageName'])

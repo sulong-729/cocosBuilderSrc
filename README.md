@@ -3,11 +3,13 @@
 A macOS desktop tool for exporting, building, installing, and running Cocos
 Creator 3.x iOS and Android projects using Cocos CLI, Xcode and Gradle.
 
-Version 1.0.2 includes an **Android** tab for APK builds, local Android
+The app includes an **Android** tab for APK builds, local Android
 Studio/SDK/NDK/JDK selection, emulator/device management, installation and Logcat.
 See the [Android guide and verification status](docs/ANDROID.md).
 
-**Current version: 1.0.2.** The available development installer is ad-hoc signed,
+**Current source/build version: 1.0.3.** Version 1.0.3 adds Android export caching and a hidden Cocos worker; see the [release notes](RELEASE-1.0.3.md).
+
+The latest published download is 1.0.3. The available development installer is ad-hoc signed,
 not Developer ID signed or notarized. macOS Gatekeeper may block it on another
 Mac. Signed distribution requires the release setup described below.
 
@@ -36,12 +38,12 @@ The app interface is currently primarily Vietnamese; the documentation is Englis
 ## Download and install
 
 The public download repository is separate from the source repository.
-Version 1.0.2 is distributed directly from the **`dowload-v102`** branch using
+Version 1.0.3 is distributed directly from the **`dowload-v103`** branch using
 Git LFS, without a Release or version tag.
 
-- [Download page and installation instructions](https://github.com/sulong-729/installer-cocos-builder-duo-native/tree/dowload-v102)
-- [Download the PKG](https://media.githubusercontent.com/media/sulong-729/installer-cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg?download=1)
-- [Public English User Guide](https://github.com/sulong-729/installer-cocos-builder-duo-native/blob/dowload-v102/USER_GUIDE.md)
+- [Download page and installation instructions](https://github.com/sulong-729/installer-cocos-builder-duo-native/tree/dowload-v103)
+- [Download the PKG](https://media.githubusercontent.com/media/sulong-729/installer-cocos-builder-duo-native/dowload-v103/cocos-builder-1.0.3-macOS-arm64-development.pkg?download=1)
+- [Public English User Guide](https://github.com/sulong-729/installer-cocos-builder-duo-native/blob/dowload-v103/USER_GUIDE.md)
 
 1. Confirm that your Mac has Apple Silicon and macOS 14.4 or newer.
 2. Download the newest `.pkg` and its `.sha256` file together.
@@ -81,7 +83,7 @@ on the selected device after confirmation. See the guide before using it.
   boundaries, and the `main`/`dev` workflow.
 - [Release Guide](docs/RELEASE.md): signed packaging, notarization, administrator
   authorization, publishing, and keeping only the newest download.
-- [Release notes](RELEASE-1.0.2.md): changes and validation limits for this version.
+- [Release notes](RELEASE-1.0.3.md): changes and validation limits for this version.
 
 ## Run from source
 
@@ -101,10 +103,10 @@ QT_QPA_PLATFORM=offscreen .runtime/venv/bin/python -m unittest discover -s . -p 
 
 ## Source and downloads
 
-The source repository is **public**, as selected for version 1.0.2, with `main` for the release baseline
+The source repository is **public**, as selected for version 1.0.3, with `main` for the release baseline
 and `dev` for ongoing changes. The separate public download repository contains
 the latest installer, checksum, Git LFS configuration, and user documentation on
-`dowload-v102`. Do not publish Releases or version tags for these downloads.
+`dowload-v103`. Do not publish Releases or version tags for these downloads.
 
 Repository visibility applies to the whole repository, not individual branches.
 A separate download repository prevents source history from being pushed with

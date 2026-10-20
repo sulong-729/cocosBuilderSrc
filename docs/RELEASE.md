@@ -9,10 +9,10 @@ There are two explicit profiles:
 | `distribution` (default) | Installers intended for normal distribution to other Macs | Developer ID app signature, hardened runtime, timestamp, Developer ID Installer signature, notarization, stapling, Gatekeeper assessment |
 | `development` | Local packaging and explicitly labeled preview builds | Ad-hoc app signature; unsigned, non-notarized installer |
 
-The prepared 1.0.2 installer is a **development preview** because Developer ID
+The prepared 1.0.3 installer is a **development preview** because Developer ID
 identities are not currently configured on the build machine. Its filename
 contains `-development`; do not describe it as Apple-approved or notarized.
-If publishing this preview, mark its GitHub Release as a prerelease.
+Publish this preview through the versioned download branch described below.
 
 ## 1. Prepare a signed distribution
 
@@ -153,7 +153,7 @@ an app ZIP as a notarized release.
 
 Keep `main` and `dev` in the public `cocosBuilderSrc` repository. The independent
 public `installer-cocos-builder-duo-native` repository stores the installer and user
-instructions on **`dowload-v102`** for version 1.0.2.
+instructions on **`dowload-v103`** for version 1.0.3.
 
 Do not create a GitHub Release or version tag in either repository for this
 download flow. GitHub automatically adds ZIP/TAR.GZ archives to tagged Releases;
@@ -166,8 +166,8 @@ The current public branch contains only:
 .gitignore
 README.md
 USER_GUIDE.md
-cocos-builder-1.0.2-macOS-arm64-development.pkg
-cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256
+cocos-builder-1.0.3-macOS-arm64-development.pkg
+cocos-builder-1.0.3-macOS-arm64-development.pkg.sha256
 ```
 
 There must be no application `.py`/`.c` files, private history, credentials,
@@ -185,7 +185,7 @@ git -C .publishing/download lfs install --local
 git -C .publishing/download lfs track '*.pkg'
 ```
 
-For version 1.0.2 the download branch is `dowload-v102`. For a future version,
+For version 1.0.3 the download branch is `dowload-v103`. For a future version,
 create a new version-named branch from the current download branch, replace the
 previous PKG/checksum with the verified new pair, and update README/User Guide
 version names, download links, support information, and signing status. Stage

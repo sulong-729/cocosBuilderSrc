@@ -12,6 +12,8 @@ from pathlib import Path
 import plistlib
 import re
 import signal
+import shutil
+import sys
 import subprocess
 import tempfile
 import threading
@@ -291,6 +293,137 @@ def gradle_override_script(values):
     return 'gradle.beforeProject { p ->\n p.afterEvaluate {\n if (p.plugins.hasPlugin("com.android.application")) {\n' + '\n'.join(statements) + '\n }\n }\n}\n'
 
 
+def prepare_creator_cli(executable, cache_root=None):
+    """Use a private copy-on-write Creator agent without modifying its install.
+
+    Electron helpers/frameworks must keep the original complete bundle topology.
+    APFS cloning shares unchanged file data; signing changes only the private copy.
+    """
+    source = Path(executable).expanduser()
+    if sys.platform != 'darwin' or not source.is_file(): return source
+    contents = source.parents[1]
+    info_path = contents / 'Info.plist'
+    if not info_path.is_file() or not (contents / 'Resources/app.asar').is_file():
+        raise BuildError('Cocos CLI cần executable trong CocosCreator.app hợp lệ; không mở editor thay thế.')
+    archive = contents / 'Resources/app.asar'
+    archive_stamp = archive.stat()
+    identity = hashlib.sha256(b'agent-v5-cow' + str(source.resolve()).encode() + source.read_bytes() + info_path.read_bytes() + f'{archive_stamp.st_size}:{archive_stamp.st_mtime_ns}'.encode()).hexdigest()[:20]
+    cache_root = Path(cache_root) if cache_root is not None else Path.home() / 'Library/Caches/Cocos Builder/creator-cli'
+    destination = cache_root / identity / contents.parent.name
+    worker = destination / 'Contents/MacOS' / source.name
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    # Other projects may request the same worker simultaneously. Publish it once,
+    # then reuse it without replacing a bundle that another process is executing.
+    with (destination.parent / '.prepare.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return _prepare_creator_cli_locked(source, contents, info_path, destination, worker, identity)
+
+
+def _prepare_creator_cli_locked(source, contents, info_path, destination, worker, identity):
+    try:
+        if worker.is_file() and read_json(destination.parent / 'ready.json').get('identity') == identity:
+            metadata = plistlib.loads((destination / 'Contents/Info.plist').read_bytes())
+            if metadata.get('LSUIElement') is True: return worker
+    except (OSError, ValueError, plistlib.InvalidFileException):
+        pass
+    with tempfile.TemporaryDirectory(prefix='prepare-', dir=destination.parent) as folder:
+        prepared = Path(folder) / destination.name
+        try:
+            subprocess.run(['/bin/cp', '-cR', str(contents.parent), str(prepared)], check=True, capture_output=True, text=True, timeout=180)
+        except (subprocess.SubprocessError, OSError) as error:
+            raise BuildError('Không tạo được bản sao copy-on-write của Cocos để build ẩn. Chọn Creator trên ổ APFS có quyền đọc; tool không mở thêm tab editor.') from error
+        target = prepared / 'Contents'
+        info = plistlib.loads(info_path.read_bytes())
+        info.update(LSUIElement=True, CFBundleExecutable=source.name)
+        info.pop('CFBundleURLTypes', None)
+        info.pop('LSBackgroundOnly', None)
+        (target / 'Info.plist').write_bytes(plistlib.dumps(info))
+        try:
+            subprocess.run(['/usr/bin/codesign', '--force', '--sign', '-', '--timestamp=none', str(prepared)], check=True, capture_output=True, text=True, timeout=30)
+        except (subprocess.SubprocessError, OSError) as error:
+            raise BuildError('Không chuẩn bị được Cocos build worker ẩn; đã dừng để tránh mở thêm tab Cocos.') from error
+        if destination.exists(): shutil.rmtree(destination)
+        prepared.rename(destination)
+        (destination.parent / 'ready.json').write_text(json.dumps({'identity': identity}))
+    return worker
+
+
+def creator_engine_arguments(creator):
+    source = Path(creator).expanduser()
+    if not source.is_file(): return []
+    engine = source.parents[1] / 'Resources/resources/3d/engine'
+    if not (engine / 'native').is_dir(): return []
+    # Respect custom JS/native engine selections made in Creator Preferences.
+    preferences = Path.home() / '.CocosCreator/profiles/v2/packages/engine.json'
+    try:
+        version = creator_version(str(source)).replace('.', '')
+        selection = read_json(preferences).get('engine', {}).get(version, {})
+    except (OSError, ValueError): return []
+    if any(isinstance(value, dict) and value.get('builtin') is False for value in selection.values()): return []
+    return ['--engine', str(engine)]
+
+
+def android_export_fingerprint(root, config, creator):
+    """Stable export inputs, including selected editor and engine source identity.
+
+    Creator rewrites preferences and native templates even when unchanged. Hash
+    these by content; retain cheap stat checks for large project assets.
+    Compare this snapshot before/after export before marking the output reusable.
+    """
+    root = Path(root)
+    digest = hashlib.sha256(b'android-export-v2' + json.dumps(config, sort_keys=True).encode())
+    output = export_folder(root, config)
+    ignored = {'.git', 'node_modules', 'build', '.gradle', '.cxx', '__pycache__', 'library', 'temp', '.cache'}
+
+    def add_file(path, label, content=False):
+        if not path.is_file(): return
+        digest.update(str(label).encode() + b'\0')
+        if content:
+            digest.update(path.read_bytes())
+        else:
+            stamp = path.stat()
+            digest.update(f'{path.resolve()}:{stamp.st_size}:{stamp.st_mtime_ns}:{stamp.st_ctime_ns}'.encode())
+        digest.update(b'\0')
+
+    def add_tree(base, label, content=False):
+        for folder, dirs, files in os.walk(base):
+            dirs[:] = sorted(d for d in dirs if d not in ignored and (Path(folder) / d).resolve() != output)
+            for filename in sorted(files):
+                if filename in ('.DS_Store', '.git'): continue
+                path = Path(folder) / filename
+                add_file(path, str(label) + '/' + str(path.relative_to(base)), content)
+
+    for name in ('assets', 'settings', 'extensions', 'native-templates', 'profiles', 'build-templates', 'native'):
+        add_tree(root / name, name, content=name in ('settings', 'profiles', 'native'))
+    for name in ('package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'):
+        add_file(root / name, name, content=True)
+    executable = Path(creator).expanduser()
+    digest.update(str(executable.resolve()).encode())
+    add_file(executable, 'creator-executable')
+    preferences = Path.home() / '.CocosCreator/profiles/v2/packages/engine.json'
+    add_file(preferences, 'engine-preferences', content=True)
+    if executable.is_file():
+        contents = executable.parents[1]
+        add_file(contents / 'Info.plist', 'creator-info', content=True)
+        add_file(contents / 'Resources/app.asar', 'creator-resources')
+        add_tree(contents / 'Resources/resources/3d/engine', 'builtin-engine')
+        try:
+            version = creator_version(str(executable)).replace('.', '')
+            selection = read_json(preferences).get('engine', {}).get(version, {})
+        except (OSError, ValueError): selection = {}
+        for kind, value in sorted(selection.items()):
+            if isinstance(value, dict) and value.get('builtin') is False:
+                for key, path in sorted(value.items()):
+                    if isinstance(path, str) and Path(path).expanduser().is_dir():
+                        add_tree(Path(path).expanduser(), f'custom-engine/{kind}/{key}')
+    return digest.hexdigest()
+
+
+def write_if_changed(path, text):
+    if not path.is_file() or path.read_text() != text:
+        path.write_text(text)
+
+
 class AndroidRunner:
     def __init__(self, tools, log, stage, java_selected=None):
         self.tools = {key: str(Path(value).expanduser()) if value and key in ('sdk', 'ndk', 'java', 'creator', 'studio') else value for key, value in tools.items()}
@@ -555,7 +688,8 @@ class AndroidRunner:
             self.tools['java'] = previous
             raise original
 
-    def build_apk(self, root, options, native_only=False):
+    def build_apk(self, root, options, native_only=False, force_export=False):
+        started = time.monotonic()
         root = Path(root)
         if not self.toolchain_lines: self.log_toolchain(options)
         info = inspect_android_project(root)
@@ -579,6 +713,13 @@ class AndroidRunner:
             except BlockingIOError: raise BuildError('Output Android đang được build bởi phiên khác.')
             if native_only and read_json(marker).get('fingerprint') != input_fingerprint(root, config):
                 raise BuildError('Asset/script/cấu hình đã đổi hoặc chưa có bản build khớp. Tắt chỉ build Gradle để export lại Cocos.')
+            export_marker = exported / '.android-builder-export.json'
+            export_config = copy.deepcopy(config)
+            export_config.pop('builderAndroid', None)
+            fingerprint = android_export_fingerprint(root, export_config, self.tools['creator'])
+            try: baseline = read_json(export_marker)
+            except (OSError, ValueError): baseline = {}
+            cached = (not force_export and baseline.get('fingerprint') == fingerprint and (exported / 'proj/gradlew').is_file())
             marker.unlink(missing_ok=True)
             logs = root / 'build/android-builder/logs'; logs.mkdir(parents=True, exist_ok=True)
             with (logs / (dt.datetime.now().strftime('%Y%m%d-%H%M%S-%f') + '.log')).open('w') as logfile:
@@ -586,16 +727,30 @@ class AndroidRunner:
                 try:
                     self.write('Log Android: ' + str(logfile.name))
                     for line in self.toolchain_lines: self.write(line)
-                    if not native_only:
+                    reason = 'buộc export lại' if force_export else 'đầu vào/Creator thay đổi, output thiếu hoặc chưa có cache'
+                    self.write('Cache Cocos: ' + ('HIT · bỏ qua export Android' if cached else 'MISS · ' + reason))
+                    if not native_only and not cached:
+                        export_marker.unlink(missing_ok=True)
+                        export_started = time.monotonic()
                         self.stage('1/3 · Cocos: xuất project Android')
                         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', prefix='cocos-android-', delete=False) as temporary:
                             creator_config = copy.deepcopy(config)
                             creator_config.pop('builderAndroid', None)
                             json.dump(creator_config, temporary); config_path = Path(temporary.name)
                         try:
-                            self.run([self.tools['creator'], '--nologin', '--project', root, '--build', f'configPath={config_path}'], cwd=root, timeout=1800, success_codes=(0, 36))
+                            creator_cli = prepare_creator_cli(self.tools['creator'])
+                            self.write('Cocos CLI: worker ẩn · không mở thêm cửa sổ / Dock tab')
+                            self.run([str(creator_cli), '--nologin', *creator_engine_arguments(self.tools['creator']), '--project', root, '--build', f'configPath={config_path}'], cwd=root, timeout=1800, success_codes=(0, 36))
                         finally:
                             config_path.unlink(missing_ok=True)
+                            self.write(f'Thời gian Cocos export: {time.monotonic() - export_started:.1f}s')
+                        if (exported / 'proj/gradlew').is_file() and fingerprint == android_export_fingerprint(root, export_config, self.tools['creator']):
+                            export_marker.write_text(json.dumps({'fingerprint': fingerprint}))
+                        else:
+                            self.write('Warning: Không ghi cache export vì đầu vào đã đổi trong lúc export hoặc output chưa đầy đủ; lần sau sẽ xuất lại.')
+                    else:
+                        self.stage('1/3 · Dùng bản xuất Cocos Android đã có')
+                        self.write('Thời gian Cocos export: 0.0s · dùng output hiện có')
                     proj = exported / 'proj'
                     if not (proj / 'gradlew').is_file(): raise BuildError(f'Chưa có Gradle wrapper tại {proj}. Xuất Cocos Android trước.')
                     self.ensure_gradle_java(proj)
@@ -603,17 +758,21 @@ class AndroidRunner:
                     text = local.read_text() if local.is_file() else ''
                     text = re.sub(r'^sdk\.dir=.*\n?', '', text, flags=re.M)
                     sdk_path = str(Path(self.tools['sdk']).expanduser()).replace('\\', '\\\\').replace(':', '\\:')
-                    local.write_text(text.rstrip() + '\nsdk.dir=' + sdk_path + '\n')
+                    write_if_changed(local, text.rstrip() + '\nsdk.dir=' + sdk_path + '\n')
                     self.stage('2/3 · Gradle: build APK')
                     variant = 'debug' if config.get('debug', True) else 'release'
                     # Cocos 3.x uses named application modules, so assemble the selected
                     # variant through the wrapper instead of hardcoding :app.
-                    args = ['/bin/sh', str(proj / 'gradlew'), 'assemble' + variant.title(), '--console=plain', '--no-daemon', f'-PPROP_NDK_PATH={self.tools["ndk"]}', f'-Dorg.gradle.java.home={self.tools["java"]}']
+                    args = ['/bin/sh', str(proj / 'gradlew'), 'assemble' + variant.title(), '--console=plain', '--daemon', '--build-cache', f'-PPROP_NDK_PATH={self.tools["ndk"]}', f'-Dorg.gradle.java.home={self.tools["java"]}']
                     # Apply optional application metadata without editing native templates.
-                    with tempfile.TemporaryDirectory(prefix='cocos-gradle-') as temporary:
-                        init = Path(temporary) / 'builder.gradle'
-                        init.write_text(gradle_override_script(config.get('builderAndroid', {})))
+                    init = exported / '.android-builder-gradle.gradle'
+                    write_if_changed(init, gradle_override_script(config.get('builderAndroid', {})))
+                    self.write('Cache Gradle: giữ output incremental · bật build cache và tái sử dụng daemon JDK tương thích')
+                    gradle_started = time.monotonic()
+                    try:
                         self.run([*args, '--init-script', init], cwd=proj, timeout=3600)
+                    finally:
+                        self.write(f'Thời gian Gradle: {time.monotonic() - gradle_started:.1f}s')
                     apk = select_apk(exported, variant)
                     metadata = self.apk_metadata(apk)
                     if metadata['package'] != config['packages']['android']['packageName']:
@@ -623,6 +782,7 @@ class AndroidRunner:
                     self.stage('APK đã build thành công')
                     return str(apk)
                 finally:
+                    self.write(f'Thời gian Android tổng: {time.monotonic() - started:.1f}s')
                     self.logfile = None
 
     def existing_apk(self, root, options):

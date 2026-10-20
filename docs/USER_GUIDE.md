@@ -1,6 +1,6 @@
 # Cocos Builder Duo Native — Installation and User Guide
 
-**Version 1.0.2 · Apple Silicon macOS · iOS and Android APK**
+**Version 1.0.3 · Apple Silicon macOS · iOS and Android APK**
 
 The download repository is named **Cocos Builder Duo Native**. After installation,
 the app appears in Applications as **cocos builder**. The UI is mainly Vietnamese;
@@ -47,10 +47,10 @@ setup are outside this release's scope.
 
 ### Download the correct two files
 
-Open the [download page](https://github.com/sulong-729/installer-cocos-builder-duo-native/tree/dowload-v102), then download:
+Open the [download page](https://github.com/sulong-729/installer-cocos-builder-duo-native/tree/dowload-v103), then download:
 
-- [cocos-builder-1.0.2-macOS-arm64-development.pkg](https://media.githubusercontent.com/media/sulong-729/installer-cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg?download=1)
-- [cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256](https://raw.githubusercontent.com/sulong-729/installer-cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256)
+- [cocos-builder-1.0.3-macOS-arm64-development.pkg](https://media.githubusercontent.com/media/sulong-729/installer-cocos-builder-duo-native/dowload-v103/cocos-builder-1.0.3-macOS-arm64-development.pkg?download=1)
+- [cocos-builder-1.0.3-macOS-arm64-development.pkg.sha256](https://raw.githubusercontent.com/sulong-729/installer-cocos-builder-duo-native/dowload-v103/cocos-builder-1.0.3-macOS-arm64-development.pkg.sha256)
 
 Use the direct PKG link. The installer is about **149.7 MB** and is stored with
 Git LFS. A tiny text file beginning `version https://git-lfs.github.com/spec/v1`
@@ -62,13 +62,13 @@ Put both files in the same directory. If you used Downloads, open Terminal and r
 
 ```sh
 cd ~/Downloads
-shasum -a 256 -c cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256
+shasum -a 256 -c cocos-builder-1.0.3-macOS-arm64-development.pkg.sha256
 ```
 
 Expected output:
 
 ```text
-cocos-builder-1.0.2-macOS-arm64-development.pkg: OK
+cocos-builder-1.0.3-macOS-arm64-development.pkg: OK
 ```
 
 If the filename is different, or verification fails, download the matching pair
@@ -81,7 +81,7 @@ again. A checksum verifies integrity; it does not certify Apple notarization.
 3. Follow Installer to install into `/Applications/cocos builder.app`.
 4. Authorize installation through the macOS system dialog when requested.
    macOS may reuse authorization from the current session.
-5. Open **Applications → cocos builder** and check version **1.0.2** in the title.
+5. Open **Applications → cocos builder** and check version **1.0.3** in the title.
 
 The app runs under your user account after installation. Existing project outputs
 and settings are separate from the app bundle and can remain after an update.
@@ -397,9 +397,12 @@ platform tools, selected destination, the button used, and the first relevant
 error with nearby logs. Distinguish build failure, install failure, launch failure
 and a crash after launch. Remove credentials and private game data before posting.
 
-## Verification scope for 1.0.2
+## Verification scope for 1.0.3
 
-The automated suite has 132 passing checks. Fresh Cocos 3.7.3 ARM64 Android APK
+The automated suite has 146 passing checks. Version 1.0.3 adds Android export
+caching and a hidden Creator worker. Consecutive APK-only builds on the tested
+Creator 3.7.3 project took 96.71 seconds with export and 9.10 seconds with a
+cache hit; these timing checks do not add device or gameplay verification. Fresh Cocos 3.7.3 ARM64 Android APK
 export/build/install/launch and automatic Logcat were verified on an emulator.
 The Qt Build & Run flow selected installed JDK 11 instead of JDK 21 for Gradle
 6.5.1. This does not verify authenticated gameplay, physical-phone QR pairing,

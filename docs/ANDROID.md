@@ -67,6 +67,29 @@ that SDK operation. The runner now selects an installed JDK 17+ for SDK commands
 - Platform tabs show a platform icon, an animated spinner during work, and a device icon with the number of running emulators / connected phones. Counts refresh in the background for both tabs.
 - Every Build/Run attempt logs SDK location, installed API range, project min/target/compile SDK, selected NDK and installed NDK range in green. Installed ranges describe availability, not a supported compatibility range. Missing tool errors remain red and warnings yellow.
 
+## Incremental Android builds (1.0.3)
+
+Normal **Build APK** / **Build & Run** reuses the last successful Cocos export
+when project inputs, export options, Creator and engine inputs match. Changes to
+assets/scripts, settings, extensions, profiles or native templates cause a new
+export. Gradle-only version overrides reuse the export. A failed Gradle build can
+retry against the successful export. Edits detected during export prevent that
+output from being cached for the next build.
+
+Gradle retains its outputs and uses `--daemon --build-cache`. The tool does not
+clean the project on normal builds and avoids rewriting unchanged Gradle inputs.
+**Buộc xuất lại Cocos Android (bỏ qua cache export)** forces a fresh export when
+needed. Logs show export cache HIT/MISS and separate Cocos, Gradle and total times.
+The first build after toolchain changes can still require native compilation.
+
+On macOS, export uses the installed Creator through a private APFS copy-on-write
+app bundle in `~/Library/Caches/Cocos Builder/creator-cli`. This local worker is
+configured as an accessory app to avoid an additional editor/Dock tab; the original
+Creator installation is unchanged. Built-in engine paths point to the original
+installation, and custom engine preferences are respected. No separate Cocos
+engine is downloaded. If the hidden worker cannot be prepared, the build reports
+an error instead of launching the editor. The worker is reused across builds.
+
 ## Cancellation and artifacts
 
 Long operations run in workers. **Dừng** terminates the owned process group;
@@ -117,3 +140,13 @@ installed/launched AppActivity on emulator-5554 with Status: ok. SDK command-lin
 tools are now installed. Physical QR pairing and AVD creation/deletion remain
 unverified on real devices. Automated checks cover QR identity, timeout,
 cancellation and credential redaction.
+
+### Development cache and hidden-worker verification (2026-10-20)
+
+146 automated checks passed. Two consecutive APK-only builds on
+`cc30-kproject-c99` took 96.71 seconds (export required), then 9.10 seconds
+(cache HIT, zero Creator export commands). These measurements include input
+checks; results depend on project changes and toolchain state. No new device
+installation or gameplay check was performed for this change. During export,
+macOS reported the private worker as an accessory app with zero onscreen
+windows. The existing Creator editor remained separate and unchanged.
