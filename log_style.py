@@ -32,5 +32,3 @@ class LogHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text):
         self.setFormat(0, len(text), self.formats[self.level(text)])
-
-
