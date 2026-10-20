@@ -152,7 +152,7 @@ an app ZIP as a notarized release.
 ## 6. Separate source from installer downloads
 
 Keep `main` and `dev` in the public `cocosBuilderSrc` repository. The independent
-public `cocos-builder-duo-native` repository stores the installer and user
+public `installer-cocos-builder-duo-native` repository stores the installer and user
 instructions on **`dowload-v102`** for version 1.0.2.
 
 Do not create a GitHub Release or version tag in either repository for this

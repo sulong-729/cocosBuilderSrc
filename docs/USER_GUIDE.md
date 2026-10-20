@@ -47,10 +47,10 @@ setup are outside this release's scope.
 
 ### Download the correct two files
 
-Open the [download page](https://github.com/sulong-729/cocos-builder-duo-native/tree/dowload-v102), then download:
+Open the [download page](https://github.com/sulong-729/installer-cocos-builder-duo-native/tree/dowload-v102), then download:
 
-- [cocos-builder-1.0.2-macOS-arm64-development.pkg](https://media.githubusercontent.com/media/sulong-729/cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg?download=1)
-- [cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256](https://raw.githubusercontent.com/sulong-729/cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256)
+- [cocos-builder-1.0.2-macOS-arm64-development.pkg](https://media.githubusercontent.com/media/sulong-729/installer-cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg?download=1)
+- [cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256](https://raw.githubusercontent.com/sulong-729/installer-cocos-builder-duo-native/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg.sha256)
 
 Use the direct PKG link. The installer is about **149.7 MB** and is stored with
 Git LFS. A tiny text file beginning `version https://git-lfs.github.com/spec/v1`
