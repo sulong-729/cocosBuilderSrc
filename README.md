@@ -40,7 +40,7 @@ Version 1.0.2 is distributed directly from the **`dowload-v102`** branch using
 Git LFS, without a Release or version tag.
 
 - [Download page and installation instructions](https://github.com/sulong-729/cocos-ios-builder-download/tree/dowload-v102)
-- [Download the PKG](https://media.githubusercontent.com/media/sulong-729/cocos-ios-builder-download/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg)
+- [Download the PKG](https://media.githubusercontent.com/media/sulong-729/cocos-ios-builder-download/dowload-v102/cocos-builder-1.0.2-macOS-arm64-development.pkg?download=1)
 - [Public English User Guide](https://github.com/sulong-729/cocos-ios-builder-download/blob/dowload-v102/USER_GUIDE.md)
 
 1. Confirm that your Mac has Apple Silicon and macOS 14.4 or newer.
